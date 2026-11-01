@@ -61,45 +61,49 @@ export const useTransactionList = filters =>
     meta: { persist: isUnfiltered(filters) },
   });
 
-export const useDashboard = () => {
+const dashboardQuery = () => {
   const { month, year } = currentMonth();
-  return useQuery({
+  return {
     queryKey: queryKeys.dashboard(month, year),
     queryFn: () => getHomeDataApi({ month, year }),
     meta: { persist: true },
-  });
+  };
 };
+
+export const useDashboard = () => useQuery(dashboardQuery());
 
 /**
  * Whether the user has ever logged an expense / income. The dashboard only
  * covers the current month, so it can't answer this; one row per type is
  * enough. Flipped to true locally when the user saves their first one.
  */
-export const useActivity = () =>
-  useQuery({
-    queryKey: queryKeys.activity,
-    queryFn: async () => {
-      const [expense, income] = await Promise.all(
-        ['expense', 'income'].map(type =>
-          getTransactionsApi({ type, limit: 1 }).then(
-            res => (res.transactions?.length ?? 0) > 0,
-          ),
+const activityQuery = {
+  queryKey: queryKeys.activity,
+  queryFn: async () => {
+    const [expense, income] = await Promise.all(
+      ['expense', 'income'].map(type =>
+        getTransactionsApi({ type, limit: 1 }).then(
+          res => (res.transactions?.length ?? 0) > 0,
         ),
-      );
-      return { expense, income };
-    },
-    // Only ever changes from false to true, which the app does itself
-    staleTime: Infinity,
-    meta: { persist: true },
-  });
+      ),
+    );
+    return { expense, income };
+  },
+  // Only ever changes from false to true, which the app does itself
+  staleTime: Infinity,
+  meta: { persist: true },
+};
 
+export const useActivity = () => useQuery(activityQuery);
+
+/**
+ * Started during the splash so Home mounts with data. Includes the activity
+ * probe, otherwise a new user would see the regular layout for a moment
+ * before the getting-started checklist replaces it.
+ */
 export const prefetchHomeData = queryClient => {
-  const { month, year } = currentMonth();
-  queryClient.prefetchQuery({
-    queryKey: queryKeys.dashboard(month, year),
-    queryFn: () => getHomeDataApi({ month, year }),
-    meta: { persist: true },
-  });
+  queryClient.prefetchQuery(dashboardQuery());
+  queryClient.prefetchQuery(activityQuery);
 };
 
 /** After any server-side change to transactions or balances. */

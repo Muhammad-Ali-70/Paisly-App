@@ -19,18 +19,19 @@ import { invalidateTransactionData } from './transactions';
 
 const PAGE_SIZE = 10;
 
-export const useDebtSummary = () =>
-  useQuery({
-    queryKey: queryKeys.debtSummary,
-    queryFn: async () => {
-      const data = await getDebtSummaryApi();
-      return {
-        totalOutstanding: data.totalOutstanding || 0,
-        totalReceivable: data.totalReceivable || 0,
-      };
-    },
-    meta: { persist: true },
-  });
+export const debtSummaryQuery = {
+  queryKey: queryKeys.debtSummary,
+  queryFn: async () => {
+    const data = await getDebtSummaryApi();
+    return {
+      totalOutstanding: data.totalOutstanding || 0,
+      totalReceivable: data.totalReceivable || 0,
+    };
+  },
+  meta: { persist: true },
+};
+
+export const useDebtSummary = () => useQuery(debtSummaryQuery);
 
 /** Paged debt list; keeps the previous results on screen while searching. */
 export const useDebtList = search =>
