@@ -29,6 +29,9 @@ const useAuthStore = create(
       rememberMe: true,
       pendingAction: null,
       hasSeenCarousel: false,
+      // True once this device has logged in or verified an account. Decides whether
+      // the auth stack opens on Sign Up (new install) or Log In (returning user).
+      hasAccount: false,
 
       // ── Actions ────────────────────────────────────────────────────────────
 
@@ -42,7 +45,7 @@ const useAuthStore = create(
         withLoading(set, async () => {
           const { token, user } = await verifySignupOtpApi({ email, otp });
           storage.set('token', token);
-          set({ token, user });
+          set({ token, user, hasAccount: true });
           return { success: true };
         }),
 
@@ -51,7 +54,7 @@ const useAuthStore = create(
         withLoading(set, async () => {
           const { token, user } = await loginApi({ email, password });
           storage.set('token', token);
-          set({ token, user, rememberMe });
+          set({ token, user, rememberMe, hasAccount: true });
           await useAccountStore.getState().fetchAccounts();
           return { success: true };
         }),
@@ -112,11 +115,18 @@ const useAuthStore = create(
     }),
     {
       name: 'paisly-auth-store',
+      // Installs from before hasAccount existed: a stored token means an account
+      merge: (persisted, current) => ({
+        ...current,
+        ...persisted,
+        hasAccount: persisted?.hasAccount ?? !!persisted?.token,
+      }),
       storage: createJSONStorage(() => mmkvStorage),
       partialize: state => {
         const partial = { 
           rememberMe: state.rememberMe,
           hasSeenCarousel: state.hasSeenCarousel,
+          hasAccount: state.hasAccount,
         };
         if (state.rememberMe) {
           partial.token = state.token;
