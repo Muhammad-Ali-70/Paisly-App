@@ -11,7 +11,6 @@ import {
 import { handleShortcutAction } from '../utils/deepLinkHandler';
 
 const RootNavigator = () => {
-  const navigationRef = React.useRef();
   const toast = useToastService();
   const toastRef = React.useRef(toast);
   toastRef.current = toast;
@@ -20,27 +19,16 @@ const RootNavigator = () => {
   useEffect(() => {
     initializeShortcuts();
 
-    getInitialShortcut().then(shortcutItem => {
-      if (shortcutItem && navigationRef.current) {
-        handleShortcutAction(
-          shortcutItem,
-          navigationRef.current,
-          useAuthStore.getState(),
-          toastRef.current,
-        );
-      }
-    });
+    const handleShortcut = shortcutItem =>
+      handleShortcutAction(
+        shortcutItem,
+        useAuthStore.getState(),
+        toastRef.current,
+      );
 
-    const handleShortcut = shortcutItem => {
-      if (navigationRef.current) {
-        handleShortcutAction(
-          shortcutItem,
-          navigationRef.current,
-          useAuthStore.getState(),
-          toastRef.current,
-        );
-      }
-    };
+    getInitialShortcut().then(shortcutItem => {
+      if (shortcutItem) handleShortcut(shortcutItem);
+    });
 
     const unsubscribe = subscribeToShortcuts(handleShortcut);
 
@@ -52,7 +40,7 @@ const RootNavigator = () => {
   }, []);
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer>
       <RootStackNavigator pendingAction={pendingAction} />
     </NavigationContainer>
   );

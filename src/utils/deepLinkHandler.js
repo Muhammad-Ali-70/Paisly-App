@@ -1,31 +1,23 @@
 import { parseShortcutType } from '../services/appShortcutsService';
 
-export const handleShortcutAction = (shortcutItem, navigation, authStore, toastService) => {
+// Only records the intent. PendingActionHandler (mounted inside the signed-in,
+// onboarded navigator) runs it once the target routes exist, so it works from a
+// cold start (splash still showing), a warm start and before login alike.
+export const handleShortcutAction = (shortcutItem, authStore, toastService) => {
   const actionType = parseShortcutType(shortcutItem);
-  
+
   if (!actionType) {
     console.warn('[DeepLink] Unknown shortcut action:', shortcutItem);
     return;
   }
 
-  const isAuthenticated = authStore.token;
-  const isOnboarded = authStore.user?.isOnboarded;
-
-  if (!isAuthenticated) {
+  if (!authStore.token) {
     toastService.info('Please log in to continue');
-    authStore.setPendingAction(actionType);
-    return;
-  }
-
-  if (!isOnboarded) {
+  } else if (!authStore.user?.isOnboarded) {
     toastService.info('Please complete onboarding first');
-    authStore.setPendingAction(actionType);
-    return;
   }
 
-  setTimeout(() => {
-    executeShortcutNavigation(actionType, navigation);
-  }, 1000);
+  authStore.setPendingAction(actionType);
 };
 
 export const executeShortcutNavigation = (actionType, navigation) => {

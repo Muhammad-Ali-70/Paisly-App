@@ -14,21 +14,21 @@ export const initializeShortcuts = () => {
         type: SHORTCUT_TYPES.ADD_EXPENSE,
         title: 'Add Expense',
         subtitle: 'Add a new expense',
-        icon: Platform.select({ ios: 'Compose', android: 'ic_launcher' }),
+        icon: Platform.select({ ios: 'Compose', android: 'ic_shortcut_expense' }),
         userInfo: { url: 'paisly://addExpense' },
       },
       {
         type: SHORTCUT_TYPES.ADD_INCOME,
         title: 'Add Income',
         subtitle: 'Add a new income',
-        icon: Platform.select({ ios: 'Add', android: 'ic_launcher' }),
+        icon: Platform.select({ ios: 'Add', android: 'ic_shortcut_income' }),
         userInfo: { url: 'paisly://addIncome' },
       },
       {
         type: SHORTCUT_TYPES.VIEW_HISTORY,
         title: 'View History',
         subtitle: 'View transaction history',
-        icon: Platform.select({ ios: 'Time', android: 'ic_launcher' }),
+        icon: Platform.select({ ios: 'Time', android: 'ic_shortcut_history' }),
         userInfo: { url: 'paisly://history' },
       },
     ];
@@ -39,16 +39,10 @@ export const initializeShortcuts = () => {
   }
 };
 
+// Warm-start shortcuts only. The launch shortcut comes from getInitialShortcut(),
+// which must not be repeated here or a cold start would handle it twice.
 export const subscribeToShortcuts = callback => {
   try {
-    QuickActions.popInitialAction()
-      .then(action => {
-        if (action) {
-          callback(action);
-        }
-      })
-      .catch(err => console.error('[AppShortcuts] Error getting initial action:', err));
-
     const listener = DeviceEventEmitter.addListener('quickActionShortcut', callback);
     return () => listener.remove();
   } catch (error) {
@@ -65,7 +59,13 @@ export const unsubscribeFromShortcuts = () => {
   }
 };
 
+// popInitialAction doesn't clear the launch intent (it stays on the Activity), so
+// every call returns the same shortcut. Read it once per JS runtime.
+let initialShortcutRead = false;
+
 export const getInitialShortcut = async () => {
+  if (initialShortcutRead) return null;
+  initialShortcutRead = true;
   try {
     const action = await QuickActions.popInitialAction();
     return action || null;
