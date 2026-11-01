@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import {
   createTransactionApi,
+  createBulkTransactionsApi,
   getHomeDataApi,
   getTransactionsApi,
 } from '../services/transactionService';
@@ -221,4 +222,62 @@ export const createTransactionMutation = (queryClient, { onError } = {}) => ({
 export const useCreateTransaction = options => {
   const queryClient = useQueryClient();
   return useMutation(createTransactionMutation(queryClient, options));
+};
+
+// ─── Bulk add ───────────────────────────────────────────────────────────────
+
+/**
+ * Puts server-confirmed transactions into the cached History lists (only the
+ * lists whose filters match) and moves the balance, so the batch is visible
+ * immediately while the background refetch catches up.
+ */
+const insertSavedTransactions = (queryClient, saved) => {
+  queryClient
+    .getQueriesData({ queryKey: queryKeys.transactionLists })
+    .forEach(([key, data]) => {
+      if (!data?.pages?.length) return;
+      const present = new Set(
+        data.pages.flatMap(p => p.transactions.map(t => t._id)),
+      );
+      const rows = saved.filter(
+        t => !present.has(t._id) && matchesFilters(t, key[2]),
+      );
+      if (!rows.length) return;
+      const [first, ...rest] = data.pages;
+      queryClient.setQueryData(key, {
+        ...data,
+        pages: [{ ...first, transactions: [...rows, ...first.transactions] }, ...rest],
+      });
+    });
+};
+
+/**
+ * Not optimistic, unlike single add: the user types a long list on a dedicated
+ * screen, so on failure they must still have their text. The server saves the
+ * batch atomically, so the outcome is simply "all added" or "nothing changed".
+ */
+export const createBulkTransactionsMutation = queryClient => ({
+  mutationFn: createBulkTransactionsApi,
+  onSuccess: (data, { accountId }) => {
+    const saved = data.transactions ?? [];
+    insertSavedTransactions(queryClient, saved);
+
+    const net = saved.reduce(
+      (sum, t) => sum + (t.type === 'expense' ? -t.amount : t.amount),
+      0,
+    );
+    adjustBalance(accountId, net);
+
+    const types = new Set(saved.map(t => t.type));
+    queryClient.setQueryData(queryKeys.activity, old => ({
+      ...old,
+      ...Object.fromEntries([...types].map(type => [type, true])),
+    }));
+  },
+  onSettled: () => invalidateTransactionData(queryClient),
+});
+
+export const useCreateBulkTransactions = () => {
+  const queryClient = useQueryClient();
+  return useMutation(createBulkTransactionsMutation(queryClient));
 };

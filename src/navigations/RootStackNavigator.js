@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import useAuthStore, {
@@ -17,6 +18,7 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import WelcomeCarouselScreen from '../screens/onboarding/WelcomeCarouselScreen';
 import AuthStack from './AuthStack';
 import AddTransactionScreen from '../screens/tabs/AddTrasaction/AddTransactionScreen';
+import BulkAddScreen from '../screens/tabs/AddTrasaction/BulkAddScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import { executePendingAction } from '../utils/deepLinkHandler';
 import { DEV_CONFIG } from '../config/dev';
@@ -27,13 +29,28 @@ const PendingActionHandler = ({ pendingAction }) => {
   const navigation = useNavigation();
   const clearPendingAction = useAuthStore(s => s.clearPendingAction);
 
+  // Mounted only inside the signed-in, onboarded tree, so the target routes exist.
+  // Waits for the container to be ready rather than guessing a delay.
   useEffect(() => {
-    if (pendingAction && navigation) {
-      const timer = setTimeout(() => {
-        executePendingAction(pendingAction, navigation, clearPendingAction);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
+    if (!pendingAction || !navigation) return undefined;
+
+    let cancelled = false;
+    let retry;
+    const run = () => {
+      if (cancelled) return;
+      if (navigation.isReady && !navigation.isReady()) {
+        retry = setTimeout(run, 100);
+        return;
+      }
+      executePendingAction(pendingAction, navigation, clearPendingAction);
+    };
+    const task = InteractionManager.runAfterInteractions(run);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retry);
+      task.cancel();
+    };
   }, [pendingAction, navigation, clearPendingAction]);
 
   return null;
@@ -102,6 +119,7 @@ const RootStackNavigator = ({ pendingAction }) => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="TabNavigator" component={TabNavigator} />
         <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
+        <Stack.Screen name="BulkAdd" component={BulkAddScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
       </Stack.Navigator>
       <PendingActionHandler pendingAction={pendingAction} />

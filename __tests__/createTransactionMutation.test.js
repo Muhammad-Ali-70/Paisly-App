@@ -9,6 +9,7 @@ import { createTransactionApi } from '../src/services/transactionService';
 
 jest.mock('../src/services/transactionService', () => ({
   createTransactionApi: jest.fn(),
+  createBulkTransactionsApi: jest.fn(),
   getHomeDataApi: jest.fn(),
   getTransactionsApi: jest.fn(),
 }));
@@ -119,4 +120,50 @@ test('matchesFilters mirrors the server-side list filters', () => {
   expect(matchesFilters(tx, { dateFrom: '2026-11-03' })).toBe(false);
   // Search results can't be predicted locally
   expect(matchesFilters(tx, { search: 'lunch' })).toBe(false);
+});
+
+describe('bulk add', () => {
+  const { createBulkTransactionsMutation } = require('../src/queries/transactions');
+  const {
+    createBulkTransactionsApi,
+  } = require('../src/services/transactionService');
+
+  const saved = [
+    { _id: 's1', type: 'expense', amount: 50, category: 'food', accountId: account, date: payload.date },
+    { _id: 's2', type: 'income', amount: 200, category: 'salary', accountId: account, date: payload.date },
+  ];
+
+  test('puts saved rows into matching lists and applies the net balance', async () => {
+    createBulkTransactionsApi.mockResolvedValue({ transactions: saved });
+    const observer = new MutationObserver(
+      queryClient,
+      createBulkTransactionsMutation(queryClient),
+    );
+
+    await observer.mutate({ accountId: 'acc1', date: payload.date, items: [] });
+
+    // Unfiltered list gets both; the income-only list gets just the income row
+    expect(ids(allKey)).toEqual(['s1', 's2', 'old']);
+    expect(ids(incomeKey)).toEqual(['s2']);
+    expect(balance()).toBe(250); // 100 - 50 + 200
+    expect(queryClient.getQueryData(queryKeys.activity)).toEqual({
+      expense: true,
+      income: true,
+    });
+  });
+
+  test('a rejected batch changes nothing', async () => {
+    createBulkTransactionsApi.mockRejectedValue(new Error('Insufficient balance.'));
+    const observer = new MutationObserver(
+      queryClient,
+      createBulkTransactionsMutation(queryClient),
+    );
+
+    await expect(
+      observer.mutate({ accountId: 'acc1', date: payload.date, items: [] }),
+    ).rejects.toThrow('Insufficient balance.');
+
+    expect(ids(allKey)).toEqual(['old']);
+    expect(balance()).toBe(100);
+  });
 });

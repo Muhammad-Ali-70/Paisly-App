@@ -17,6 +17,7 @@ import DateTimeRow from '../../../components/addexpense/DateTimeRow';
 import NotesInput from '../../../components/addexpense/NotesInput';
 import TransactionTypeHeader from '../../../components/addexpense/TransactionTypeHeader';
 import TransferLink from '../../../components/addexpense/TransferLink';
+import BulkAddLink from '../../../components/addexpense/BulkAddLink';
 import PrimaryButton from '../../../components/ui/PrimaryButton';
 import ToggleButtons from '../../../components/ui/ToggleButtons';
 import CategoryModal from '../../../components/modals/CategoryModal';
@@ -68,6 +69,13 @@ const AddTransactionScreen = ({ navigation, route }) => {
     useState(false);
 
   const [type, setType] = useState(initialType);
+
+  // Opened again with a different type (e.g. the Add Income shortcut while this
+  // screen is already up): follow the param instead of keeping the first value.
+  const typeParam = route?.params?.type;
+  useEffect(() => {
+    if (typeParam) setType(typeParam);
+  }, [typeParam]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('transport');
@@ -220,6 +228,9 @@ const AddTransactionScreen = ({ navigation, route }) => {
     else setIncomeCategory(cat._id);
   };
 
+  // Hands the current type over so the batch starts as expenses or income
+  const openBulkAdd = () => navigation?.navigate('BulkAdd', { type });
+
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount);
 
@@ -312,6 +323,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
         type={type}
         onTypeChange={setType}
         onClose={() => navigation?.goBack()}
+        onBulkPress={openBulkAdd}
       />
 
       <ScrollView
@@ -407,6 +419,8 @@ const AddTransactionScreen = ({ navigation, route }) => {
               )}
             </View>
           )}
+
+          <BulkAddLink onPress={openBulkAdd} />
 
           <TransferLink
             onPress={() =>

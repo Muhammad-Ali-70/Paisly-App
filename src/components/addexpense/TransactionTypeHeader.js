@@ -1,13 +1,18 @@
 import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, ListPlus } from 'lucide-react-native';
 import { hp, wp } from '../../constants/responsive';
 import { Label } from '../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
 
 const TYPES = ['expense', 'income'];
 
-const TransactionTypeHeader = ({ type, onTypeChange, onClose }) => {
+const TransactionTypeHeader = ({
+  type,
+  onTypeChange,
+  onClose,
+  onBulkPress,
+}) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -45,6 +50,18 @@ const TransactionTypeHeader = ({ type, onTypeChange, onClose }) => {
           </TouchableOpacity>
         ))}
       </View>
+
+      {onBulkPress && (
+        <TouchableOpacity
+          style={styles.bulkBtn}
+          onPress={onBulkPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Add many transactions at once"
+        >
+          <ListPlus size={wp(5.5)} color={theme.primary} strokeWidth={2} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -62,6 +79,23 @@ const createStyles = t =>
       width: wp(10),
       height: wp(10),
       borderRadius: wp(5),
+      backgroundColor: t.surfacePrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 3,
+    },
+    bulkBtn: {
+      width: wp(10),
+      height: wp(10),
+      borderRadius: wp(5),
+      marginLeft: wp(3),
       backgroundColor: t.surfacePrimary,
       alignItems: 'center',
       justifyContent: 'center',

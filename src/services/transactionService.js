@@ -23,6 +23,30 @@ export const createTransactionApi = async ({
   return response.data;
 };
 
+/**
+ * Adds many transactions to one account atomically (all saved or none).
+ * `items`: [{ type, amount, category, description, date }].
+ */
+export const createBulkTransactionsApi = async ({ accountId, date, items }) => {
+  try {
+    const response = await apiClient.post('/transactions/bulk', {
+      accountId,
+      date,
+      items,
+    });
+    return response.data;
+  } catch (err) {
+    // Express answers an unknown route with an HTML 404 that has no JSON
+    // `message`; a real "Account not found" 404 does.
+    if (err?.status === 404 && !err?.data?.message) {
+      throw new Error(
+        "Bulk add isn't available on the server yet. Please try again later.",
+      );
+    }
+    throw err;
+  }
+};
+
 export const getTransactionsApi = async ({
   accountId,
   categoryIds,
