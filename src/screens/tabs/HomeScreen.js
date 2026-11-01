@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
@@ -11,6 +17,7 @@ import MonthlySpendingCard from '../../components/home/MonthlySpendingCard';
 import SmartInsightCard from '../../components/home/SmartInsightCard';
 import RecentActivitySection from '../../components/home/RecentActivitySection';
 import GettingStartedCard from '../../components/home/GettingStartedCard';
+import AddExpenseFab from '../../components/home/AddExpenseFab';
 
 import useAccountStore from '../../store/useAccountStore';
 import useCategoryStore from '../../store/useCategoryStore';
@@ -40,6 +47,18 @@ const HomeScreen = ({ navigation }) => {
   useRefreshOnFocus(['dashboard']);
   useRefreshOnFocus(['debts', 'summary']);
   const [refreshing, setRefreshing] = useState(false);
+
+  // FAB shrinks to an icon while scrolling down, expands when scrolling up/at top
+  const [fabCollapsed, setFabCollapsed] = useState(false);
+  const lastScrollY = useRef(0);
+  const handleScroll = useCallback(e => {
+    const y = e.nativeEvent.contentOffset.y;
+    const delta = y - lastScrollY.current;
+    if (y < 40) setFabCollapsed(false);
+    else if (delta > 6) setFabCollapsed(true);
+    else if (delta < -6) setFabCollapsed(false);
+    lastScrollY.current = y;
+  }, []);
 
   const dashboard = dashboardQuery.data;
   const debtSummary = debtQuery.data ?? {
@@ -164,6 +183,8 @@ const HomeScreen = ({ navigation }) => {
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -229,6 +250,11 @@ const HomeScreen = ({ navigation }) => {
           </>
         )}
       </ScrollView>
+
+      <AddExpenseFab
+        collapsed={fabCollapsed}
+        onPress={() => addTransaction('expense')}
+      />
     </View>
   );
 };
