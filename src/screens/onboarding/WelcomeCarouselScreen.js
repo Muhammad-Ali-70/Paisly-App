@@ -22,6 +22,9 @@ const WelcomeCarouselScreen = ({ navigation }) => {
   const styles = useMemo(() => createStyles(theme, insets), [theme, insets]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Carousel needs an explicit height; use the space left between header and
+  // footer so short screens don't push the CTA down or overlap it.
+  const [carouselHeight, setCarouselHeight] = useState(0);
   const carouselRef = useRef(null);
   const setHasSeenCarousel = useAuthStore(s => s.setHasSeenCarousel);
 
@@ -71,23 +74,28 @@ const WelcomeCarouselScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.carouselContainer}>
-        <Carousel
-          ref={carouselRef}
-          data={CAROUSEL_SLIDES}
-          renderItem={({ item, index }) => (
-            <CarouselSlide slide={item} isActive={index === currentIndex} />
-          )}
-          width={wp(100)}
-          height={hp(70)}
-          onSnapToItem={index => setCurrentIndex(index)}
-          loop={false}
-          enabled={true}
-          panGestureHandlerProps={{
-            activeOffsetX: [-10, 10],
-          }}
-          scrollAnimationDuration={400}
-        />
+      <View
+        style={styles.carouselContainer}
+        onLayout={e => setCarouselHeight(e.nativeEvent.layout.height)}
+      >
+        {carouselHeight > 0 && (
+          <Carousel
+            ref={carouselRef}
+            data={CAROUSEL_SLIDES}
+            renderItem={({ item, index }) => (
+              <CarouselSlide slide={item} isActive={index === currentIndex} />
+            )}
+            width={wp(100)}
+            height={carouselHeight}
+            onSnapToItem={index => setCurrentIndex(index)}
+            loop={false}
+            enabled={true}
+            panGestureHandlerProps={{
+              activeOffsetX: [-10, 10],
+            }}
+            scrollAnimationDuration={400}
+          />
+        )}
       </View>
 
       <View style={styles.footer}>

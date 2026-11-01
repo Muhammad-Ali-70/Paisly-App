@@ -1,6 +1,7 @@
-﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+﻿import React, { useState, useMemo, useCallback } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useQuery } from '@tanstack/react-query';
 import ScreenHeader from '../../../components/common/Screenheader';
 import CurrencyView from '../../../components/common/CurrencyView';
 import PaymentIcon from '../../../components/common/Paymenticon';
@@ -11,52 +12,59 @@ import { Label } from '../../../constants/globalstyle';
 import { hp, wp } from '../../../constants/responsive';
 import { getCategoryMeta, getCategoryLabel } from '../../../constants/theme/accountMeta';
 import { getTransactionsApi } from '../../../services/transactionService';
-import useBudgetStore from '../../../store/useBudgetStore';
+import { groupTransactions } from '../../../utils/transactionUtils';
+import { useCurrentBudget } from '../../../queries/budget';
+import { queryKeys } from '../../../queries/keys';
+import SkeletonSection from '../../../components/common/skeleton/SkeletonSection';
+
+// Local calendar date (YYYY-MM-DD). toISOString() would convert to UTC first,
+// which turns the 1st of the month into the previous day east of Greenwich.
+const toLocalDate = d =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
 
 const CategoryDetailScreen = ({ navigation, route }) => {
   const { category } = route.params;
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const currentBudget = useBudgetStore(s => s.currentBudget);
+  const { data: currentBudget } = useCurrentBudget();
   const meta = getCategoryMeta(category);
   const breakdown = currentBudget?.spending?.byCategory?.find(c => c.category === category);
 
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState(null);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      setLoading(true);
-      try {
-        const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        const data = await getTransactionsApi({
-          dateFrom: start.toISOString().split('T')[0],
-          dateTo: end.toISOString().split('T')[0],
-          limit: 100,
-        });
-        const filtered = data.transactions.filter(
-          (t) => t.category === category
-        );
-        setTransactions(filtered);
-      } catch (_) {}
-      setLoading(false);
-    };
-    fetchTransactions();
-  }, [category]);
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
 
-  const renderItem = useCallback(({ item }) => {
-    const { _id, category: cat, ...rest } = item;
-    return (
-      <RecentActivityItem
-        {...rest}
-        raw={item}
-        onPress={() => setSelectedTx(item)}
-      />
-    );
-  }, []);
+  // Lives under ['transactions'], so adding a transaction refreshes it too
+  const { data: rawTransactions, isPending } = useQuery({
+    queryKey: queryKeys.categoryTransactions(category, month, year),
+    queryFn: async () => {
+      const data = await getTransactionsApi({
+        categoryIds: [category],
+        dateFrom: toLocalDate(new Date(year, month, 1)),
+        dateTo: toLocalDate(new Date(year, month + 1, 0)),
+        limit: 100,
+      });
+      return data.transactions;
+    },
+  });
+
+  // RecentActivityItem expects the grouped display shape, not raw API rows
+  const transactions = useMemo(
+    () =>
+      groupTransactions(rawTransactions ?? []).flatMap(g => g.transactions),
+    [rawTransactions],
+  );
+
+  const renderItem = useCallback(
+    ({ item }) => (
+      <RecentActivityItem {...item} onPress={() => setSelectedTx(item.raw)} />
+    ),
+    [],
+  );
 
   return (
     <View style={styles.safe}>
@@ -104,10 +112,8 @@ const CategoryDetailScreen = ({ navigation, route }) => {
         </Label>
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="small" color={theme.primary} />
-        </View>
+      {isPending ? (
+        <SkeletonSection itemCount={5} showHeader={false} style={styles.skeleton} />
       ) : transactions.length === 0 ? (
         <View style={styles.center}>
           <Label type="bodySmall" weight="regular" color="textMuted">
@@ -117,7 +123,7 @@ const CategoryDetailScreen = ({ navigation, route }) => {
       ) : (
         <FlashList
           data={transactions}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={hp(7)}
           contentContainerStyle={styles.listContent}
@@ -150,6 +156,7 @@ const createStyles = (t) =>
     transactionLabel: { letterSpacing: 0.8 },
     listContent: { paddingHorizontal: wp(5), paddingBottom: hp(12) },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    skeleton: { marginTop: 0 },
   });
 
 export default CategoryDetailScreen;

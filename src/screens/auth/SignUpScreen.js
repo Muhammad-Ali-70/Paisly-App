@@ -1,13 +1,11 @@
 import React, { useRef, useState, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Linking,
   // Image, // TODO(post-MVP): Google Sign-In button
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import AppTextInput from '../../components/ui/AppTextInput';
@@ -28,7 +26,8 @@ const SignUpScreen = ({ navigation }) => {
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
-  const { signup, isLoading } = useAuthStore();
+  const signup = useAuthStore(s => s.signup);
+  const isLoading = useAuthStore(s => s.isLoading);
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -78,127 +77,122 @@ const SignUpScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={hp(1)}
-    >
-      <View style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <AuthTagline
-            title="Create Account"
-            subtitle="Join Paisly to start tracking your finances with precision."
-          />
+    <View style={styles.safe}>
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AuthTagline
+          title="Create Account"
+          subtitle="Join Paisly to start tracking your finances with precision."
+        />
 
-          <AppTextInput
-            label="Full Name"
-            placeholder="John Doe"
-            value={fullName}
-            onChangeText={text => {
-              setFullName(text);
-              clearError('fullName');
-            }}
-            autoCapitalize="words"
-            error={errors.fullName}
-            leftIconName="user"
-          />
+        <AppTextInput
+          label="Full Name"
+          placeholder="John Doe"
+          value={fullName}
+          onChangeText={text => {
+            setFullName(text);
+            clearError('fullName');
+          }}
+          autoCapitalize="words"
+          error={errors.fullName}
+          leftIconName="user"
+        />
 
-          <AppTextInput
-            label="Email Address"
-            placeholder="john@example.com"
-            value={email}
-            onChangeText={text => {
-              setEmail(text);
-              clearError('email');
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-            leftIconName="mail"
-          />
+        <AppTextInput
+          label="Email Address"
+          placeholder="john@example.com"
+          value={email}
+          onChangeText={text => {
+            setEmail(text);
+            clearError('email');
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+          leftIconName="mail"
+        />
 
-          <AppTextInput
-            label="Password"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={text => {
-              setPassword(text);
-              clearError('password');
-            }}
-            secureTextEntry={!showPassword}
-            error={errors.password}
-            leftIconName="lock"
-            rightIconName={showPassword ? 'eye' : 'eye-off'}
-            onRightIconPress={() => setShowPassword(v => !v)}
-          />
+        <AppTextInput
+          label="Password"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={text => {
+            setPassword(text);
+            clearError('password');
+          }}
+          secureTextEntry={!showPassword}
+          error={errors.password}
+          leftIconName="lock"
+          rightIconName={showPassword ? 'eye' : 'eye-off'}
+          onRightIconPress={() => setShowPassword(v => !v)}
+        />
 
-          <AppTextInput
-            label="Confirm Password"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={text => {
-              setConfirmPassword(text);
-              clearError('confirmPassword');
-            }}
-            secureTextEntry={!showConfirm}
-            error={errors.confirmPassword}
-            leftIconName="lock"
-            rightIconName={showConfirm ? 'eye' : 'eye-off'}
-            onRightIconPress={() => setShowConfirm(v => !v)}
-          />
+        <AppTextInput
+          label="Confirm Password"
+          placeholder="••••••••"
+          value={confirmPassword}
+          onChangeText={text => {
+            setConfirmPassword(text);
+            clearError('confirmPassword');
+          }}
+          secureTextEntry={!showConfirm}
+          error={errors.confirmPassword}
+          leftIconName="lock"
+          rightIconName={showConfirm ? 'eye' : 'eye-off'}
+          onRightIconPress={() => setShowConfirm(v => !v)}
+        />
 
-          <TermsAgreementRow
-            checked={agreedToTerms}
-            onToggle={() => {
-              setAgreedToTerms(v => !v);
-              clearError('agreedToTerms');
-            }}
-            error={errors.agreedToTerms}
-            onTermsPress={() => Linking.openURL(LINKS.terms)}
-            onPrivacyPress={() => Linking.openURL(LINKS.privacy)}
-          />
+        <TermsAgreementRow
+          checked={agreedToTerms}
+          onToggle={() => {
+            setAgreedToTerms(v => !v);
+            clearError('agreedToTerms');
+          }}
+          error={errors.agreedToTerms}
+          onTermsPress={() => Linking.openURL(LINKS.terms)}
+          onPrivacyPress={() => Linking.openURL(LINKS.privacy)}
+        />
 
-          <View style={styles.ctaWrapper}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={isLoading ? 'Creating account…' : 'Sign Up'}
-              onPress={handleSignUp}
-              loading={isLoading}
-              disabled={isLoading}
-            />
-          </View>
-
-          {/* TODO(post-MVP): re-enable once Google Sign-In is wired up
-          <SectionDivider label="OR CONTINUE WITH" style={styles.divider} />
-
+        <View style={styles.ctaWrapper}>
           <PrimaryButton
-            variant="outline"
+            variant="primary"
             size="lg"
-            label="Google"
-            leftIcon={
-              <Image
-                source={GoogleImage}
-                style={styles.googleLogo}
-                resizeMode="contain"
-              />
-            }
-            onPress={() => {}}
+            label={isLoading ? 'Creating account…' : 'Sign Up'}
+            onPress={handleSignUp}
+            loading={isLoading}
+            disabled={isLoading}
           />
-          */}
+        </View>
 
-          <AuthFooter
-            prompt="Already have an account?"
-            actionLabel="Log In"
-            onActionPress={() => navigation.navigate('LoginScreen')}
-          />
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+        {/* TODO(post-MVP): re-enable once Google Sign-In is wired up
+        <SectionDivider label="OR CONTINUE WITH" style={styles.divider} />
+
+        <PrimaryButton
+          variant="outline"
+          size="lg"
+          label="Google"
+          leftIcon={
+            <Image
+              source={GoogleImage}
+              style={styles.googleLogo}
+              resizeMode="contain"
+            />
+          }
+          onPress={() => {}}
+        />
+        */}
+
+        <AuthFooter
+          prompt="Already have an account?"
+          actionLabel="Log In"
+          onActionPress={() => navigation.navigate('LoginScreen')}
+        />
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

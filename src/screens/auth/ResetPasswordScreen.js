@@ -1,11 +1,9 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import AppTextInput from '../../components/ui/AppTextInput';
@@ -68,65 +66,60 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   }, [newPassword, confirmPassword, resetToken, navigation]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={hp(1)}
-    >
-      <View style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <AuthTagline
-            title="Reset Password"
-            subtitle="Enter your new password below. Make it strong."
-          />
+    <View style={styles.safe}>
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AuthTagline
+          title="Reset Password"
+          subtitle="Enter your new password below. Make it strong."
+        />
 
-          <AppTextInput
-            label="New Password"
-            placeholder="••••••••"
-            value={newPassword}
-            onChangeText={text => {
-              setNewPassword(text);
-              clearError('newPassword');
-            }}
-            secureTextEntry={!showPassword}
-            error={errors.newPassword}
-            leftIconName="lock"
-            rightIconName={showPassword ? 'eye' : 'eye-off'}
-            onRightIconPress={() => setShowPassword(v => !v)}
-          />
+        <AppTextInput
+          label="New Password"
+          placeholder="••••••••"
+          value={newPassword}
+          onChangeText={text => {
+            setNewPassword(text);
+            clearError('newPassword');
+          }}
+          secureTextEntry={!showPassword}
+          error={errors.newPassword}
+          leftIconName="lock"
+          rightIconName={showPassword ? 'eye' : 'eye-off'}
+          onRightIconPress={() => setShowPassword(v => !v)}
+        />
 
-          <AppTextInput
-            label="Confirm Password"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={text => {
-              setConfirmPassword(text);
-              clearError('confirmPassword');
-            }}
-            secureTextEntry={!showConfirm}
-            error={errors.confirmPassword}
-            leftIconName="lock"
-            rightIconName={showConfirm ? 'eye' : 'eye-off'}
-            onRightIconPress={() => setShowConfirm(v => !v)}
-          />
+        <AppTextInput
+          label="Confirm Password"
+          placeholder="••••••••"
+          value={confirmPassword}
+          onChangeText={text => {
+            setConfirmPassword(text);
+            clearError('confirmPassword');
+          }}
+          secureTextEntry={!showConfirm}
+          error={errors.confirmPassword}
+          leftIconName="lock"
+          rightIconName={showConfirm ? 'eye' : 'eye-off'}
+          onRightIconPress={() => setShowConfirm(v => !v)}
+        />
 
-          <View style={styles.ctaWrapper}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={loading ? 'Resetting…' : 'Reset Password'}
-              onPress={handleReset}
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+        <View style={styles.ctaWrapper}>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label={loading ? 'Resetting…' : 'Reset Password'}
+            onPress={handleReset}
+            loading={loading}
+            disabled={loading}
+          />
+        </View>
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

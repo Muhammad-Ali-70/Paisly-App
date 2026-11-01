@@ -1,13 +1,7 @@
 import { Appearance } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { storage } from '../services/storage';
-
-const mmkvStorage = {
-  getItem: key => storage.getString(key) ?? null,
-  setItem: (key, value) => storage.set(key, value),
-  removeItem: key => storage.delete(key),
-};
+import { mmkvStorage } from '../services/storage';
 
 const useAppStore = create(
   persist(
@@ -69,6 +63,10 @@ const useAppStore = create(
           investmentDefaults: { ...state.investmentDefaults, ...defaults },
         })),
 
+      // ── Home getting-started checklist ─────────────────────────────────────
+      checklistDismissed: false,
+      dismissChecklist: () => set({ checklistDismissed: true }),
+
       // ── Theme ───────────────────────────────────────────────────────────────
       // On first launch, read system appearance preference; persist preserves user choice
       theme: Appearance.getColorScheme() || 'light',
@@ -85,6 +83,7 @@ const useAppStore = create(
         currency: state.currency,
         theme: state.theme,
         investmentDefaults: state.investmentDefaults,
+        checklistDismissed: state.checklistDismissed,
       }),
     },
   ),

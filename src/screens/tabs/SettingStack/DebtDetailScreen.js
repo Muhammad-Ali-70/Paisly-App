@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Pencil, Trash2 } from 'lucide-react-native';
 import { hp, wp } from '../../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { Label } from '../../../constants/globalstyle';
 import ScreenHeader from '../../../components/common/Screenheader';
-import PrimaryLoader from '../../../components/ui/PrimaryLoader';
+import { SkeletonPulse, SkeletonBox } from '../../../components/common/skeleton/Skeleton';
 import PrimaryButton from '../../../components/ui/PrimaryButton';
-import { getDebtByIdApi, deleteDebtApi, getDebtTransactionsApi } from '../../../services/debtService';
+import {
+  useDebt,
+  useDebtTransactions,
+  useDeleteDebt,
+} from '../../../queries/debts';
+import { useRefreshOnFocus } from '../../../hooks/useRefreshOnFocus';
 import { formatDate } from '../../../utils/date';
 import ThemedView from '../../../components/ui/ThemedView';
 
@@ -16,68 +21,43 @@ const DebtDetailScreen = ({ navigation, route }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [debt, setDebt] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
-  const [debtTransactions, setDebtTransactions] = useState([]);
-  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const debtQuery = useDebt(id);
+  const transactionsQuery = useDebtTransactions(id);
+  const deleteDebt = useDeleteDebt();
+  // Refresh after returning from the edit screen
+  useRefreshOnFocus(['debts', 'detail', id]);
 
-  const fetchDebtDetail = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getDebtByIdApi(id);
-      setDebt(data);
-    } catch (err) {
-      console.error('Failed to fetch debt details:', err);
-      Alert.alert('Error', 'Failed to load debt details. Please try again.');
-      navigation.goBack();
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigation]);
+  const debt = debtQuery.data;
+  const debtTransactions = transactionsQuery.data ?? [];
+  const loading = debtQuery.isPending;
+  const deleting = deleteDebt.isPending;
 
+  const loadError = debtQuery.isError && !debt;
   useEffect(() => {
-    fetchDebtDetail();
-  }, [fetchDebtDetail]);
+    if (!loadError) return;
+    console.error('Failed to fetch debt details:', debtQuery.error);
+    Alert.alert('Error', 'Failed to load debt details. Please try again.');
+    navigation.goBack();
+  }, [loadError, debtQuery.error, navigation]);
 
-  useEffect(() => {
-    if (debt?._id) {
-      fetchDebtTransactions();
-    }
-  }, [debt?._id]);
-
-  const fetchDebtTransactions = useCallback(async () => {
-    if (!id) return;
-    setLoadingTransactions(true);
-    try {
-      const data = await getDebtTransactionsApi(id, { limit: 10 });
-      setDebtTransactions(data.transactions || []);
-    } catch (err) {
-      console.error('Failed to fetch debt transactions:', err);
-    } finally {
-      setLoadingTransactions(false);
-    }
-  }, [id]);
-
-  const handleDeleteDebt = async () => {
+  const handleDeleteDebt = () => {
     Alert.alert('Delete Debt', 'Are you sure you want to delete this debt? This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          setDeleting(true);
-          try {
-            await deleteDebtApi(id);
-            Alert.alert('Success', 'Debt deleted successfully.');
-            navigation.goBack();
-          } catch (err) {
-            console.error('Failed to delete debt:', err);
-            Alert.alert('Error', 'Failed to delete debt. Please try again.');
-          } finally {
-            setDeleting(false);
-          }
-        },
+        onPress: () =>
+          deleteDebt.mutate(id, {
+            onSuccess: () => {
+              Alert.alert('Success', 'Debt deleted successfully.');
+              navigation.goBack();
+            },
+            onError: err => {
+              console.error('Failed to delete debt:', err);
+              Alert.alert('Error', 'Failed to delete debt. Please try again.');
+            },
+          }),
+
       },
     ]);
   };
@@ -86,9 +66,14 @@ const DebtDetailScreen = ({ navigation, route }) => {
     return (
       <View style={styles.safe}>
         <ScreenHeader title="Debt Details" onBack={() => navigation.goBack()} />
-        <View style={styles.loadingWrap}>
-          <PrimaryLoader width={100} height={100} />
-        </View>
+        <SkeletonPulse style={styles.scrollContent}>
+          {[0, 1, 2, 3, 4].map(i => (
+            <View key={i} style={styles.detailCard}>
+              <SkeletonBox width={wp(30)} height={hp(1.6)} />
+              <SkeletonBox width={wp(55)} height={hp(2)} style={styles.detailValue} />
+            </View>
+          ))}
+        </SkeletonPulse>
       </View>
     );
   }
@@ -117,19 +102,19 @@ const DebtDetailScreen = ({ navigation, route }) => {
       <ScreenHeader
         title="Debt Details"
         onBack={() => navigation.goBack()}
-        rightIcon={
+        rightElement={
           <View style={styles.headerActions}>
             <PrimaryButton
               variant="ghost"
               size="sm"
-              icon={<Pencil size={wp(5)} color={theme.textMain} />}
+              leftIcon={<Pencil size={wp(5)} color={theme.textMain} />}
               onPress={() => navigation.navigate('AddEditDebtScreen', { debtId: id })}
               style={styles.actionButton}
             />
             <PrimaryButton
               variant="dangerOutline"
               size="sm"
-              icon={<Trash2 size={wp(5)} color={theme.error} />}
+              leftIcon={<Trash2 size={wp(5)} color={theme.error} />}
               onPress={handleDeleteDebt}
               loading={deleting}
               style={styles.actionButton}
@@ -219,10 +204,10 @@ const DebtDetailScreen = ({ navigation, route }) => {
           </>
         )}
 
-        {loadingTransactions && (
-          <View style={styles.loadingTransactions}>
-            <PrimaryLoader width={40} height={40} />
-          </View>
+        {transactionsQuery.isPending && (
+          <SkeletonPulse style={styles.loadingTransactions}>
+            <SkeletonBox width="100%" height={hp(7)} radius={12} />
+          </SkeletonPulse>
         )}
       </ScrollView>
     </ThemedView>
@@ -234,11 +219,6 @@ const createStyles = t =>
     safe: {
       flex: 1,
       backgroundColor: t.background,
-    },
-    loadingWrap: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     emptyWrap: {
       flex: 1,
@@ -293,8 +273,7 @@ const createStyles = t =>
       gap: hp(0.3),
     },
     loadingTransactions: {
-      alignItems: 'center',
-      paddingVertical: hp(2),
+      paddingVertical: hp(1),
     },
   });
 

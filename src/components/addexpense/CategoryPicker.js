@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { hp, wp } from '../../constants/responsive';
@@ -15,6 +15,16 @@ const CategoryPicker = ({
   categories = CATEGORIES,
 }) => {
   const theme = useThemeColors();
+  const scrollRef = useRef(null);
+  const itemX = useRef({});
+
+  // Bring the active category into view, e.g. after picking one from "See All"
+  useEffect(() => {
+    const x = itemX.current[activeId];
+    if (x != null) {
+      scrollRef.current?.scrollTo({ x: Math.max(0, x - wp(20)), animated: true });
+    }
+  }, [activeId]);
 
   return (
     <View style={styles.section}>
@@ -30,21 +40,28 @@ const CategoryPicker = ({
       </View>
 
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.list}
       >
         {categories.map(cat => (
-          <SelectableIcon
+          <View
             key={cat.id}
-            iconName={cat.iconName}
-            iconBg={cat.iconBg}
-            iconColor={cat.iconColor}
-            label={cat.label}
-            active={activeId === cat.id}
-            onPress={() => onSelect(cat.id)}
-            size="md"
-          />
+            onLayout={e => {
+              itemX.current[cat.id] = e.nativeEvent.layout.x;
+            }}
+          >
+            <SelectableIcon
+              iconName={cat.iconName}
+              iconBg={cat.iconBg}
+              iconColor={cat.iconColor}
+              label={cat.label}
+              active={activeId === cat.id}
+              onPress={() => onSelect(cat.id)}
+              size="md"
+            />
+          </View>
         ))}
 
         {onCreateNew && (

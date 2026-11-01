@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,8 +12,10 @@ import { useThemeColors } from '@hooks/useThemeColors';
 import { Label, borderRadius, shadowCard } from '../../../constants/globalstyle';
 import ScreenHeader from '../../../components/common/Screenheader';
 import SearchBar from '../../../components/ui/SearchBar';
-import PrimaryLoader from '../../../components/ui/PrimaryLoader';
-import { getInvestmentsApi } from '../../../services/investmentService';
+import PrimaryButton from '../../../components/ui/PrimaryButton';
+import SkeletonSection from '../../../components/common/skeleton/SkeletonSection';
+import { useInvestmentList } from '../../../queries/investments';
+import { useRefreshOnFocus } from '../../../hooks/useRefreshOnFocus';
 import { useDebounce } from '../../../hooks/useDebounce';
 import CurrencyView from '../../../components/common/CurrencyView';
 
@@ -77,56 +79,39 @@ const InvestmentsScreen = ({ navigation }) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [search, setSearch] = useState('');
-  const [investments, setInvestments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
 
   const debouncedSearch = useDebounce(search, 400);
 
-  const fetchInvestments = useCallback(
-    async (isRefresh = false, searchParam = debouncedSearch, pageNum = 1) => {
-      if (isRefresh) setLoading(true);
-      else if (pageNum === 1) setLoading(true);
-      else setLoadingMore(true);
+  const investmentsQuery = useInvestmentList();
+  useRefreshOnFocus(['investments']);
 
-      try {
-        const data = await getInvestmentsApi({ search: searchParam, page: pageNum, limit: 10 });
-        const list = data.investments || [];
-        if (isRefresh || pageNum === 1) {
-          setInvestments(list);
-        } else {
-          setInvestments(prev => [...prev, ...list]);
-        }
-        setHasMore(data.pagination?.hasNextPage || false);
-        setPage(pageNum);
-      } catch (err) {
-        console.error('Failed to load investments:', err);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
-      }
-    },
-    [debouncedSearch],
-  );
+  // The list endpoint has no search parameter, so filter the loaded rows
+  const investments = useMemo(() => {
+    const all = investmentsQuery.data?.pages.flatMap(p => p.investments || []) ?? [];
+    const q = debouncedSearch.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      i =>
+        i.title?.toLowerCase().includes(q) ||
+        i.accountId?.label?.toLowerCase().includes(q),
+    );
+  }, [investmentsQuery.data, debouncedSearch]);
+  // Skeleton only on a true first load; cached lists render immediately
+  const loading = investmentsQuery.isPending;
+  const loadingMore = investmentsQuery.isFetchingNextPage;
 
-  useEffect(() => {
-    fetchInvestments(true);
-  }, [debouncedSearch, fetchInvestments]);
-
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchInvestments(true, debouncedSearch, 1);
-  }, [debouncedSearch, fetchInvestments]);
+    await investmentsQuery.refetch();
+    setRefreshing(false);
+  }, [investmentsQuery]);
 
+  const { hasNextPage, isFetching, fetchNextPage: loadNextPage } =
+    investmentsQuery;
   const fetchNextPage = useCallback(() => {
-    if (hasMore && !loadingMore && !loading) {
-      fetchInvestments(false, debouncedSearch, page + 1);
-    }
-  }, [hasMore, loadingMore, loading, debouncedSearch, page, fetchInvestments]);
+    if (hasNextPage && !isFetching) loadNextPage();
+  }, [hasNextPage, isFetching, loadNextPage]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -173,11 +158,23 @@ const InvestmentsScreen = ({ navigation }) => {
         />
       </View>
 
-      {loading && !refreshing ? (
+      {loading ? (
+        <SkeletonSection itemCount={4} showHeader={false} style={styles.skeleton} />
+      ) : investmentsQuery.isError && investments.length === 0 ? (
         <View style={styles.loadingWrap}>
-          <PrimaryLoader width={100} height={100} />
+          <Label type="bodySmall" color="error" style={styles.empty}>
+            {investmentsQuery.error?.message || 'Failed to load investments.'}
+          </Label>
+          <PrimaryButton
+            variant="primary"
+            size="sm"
+            label="Retry"
+            onPress={() => investmentsQuery.refetch()}
+            style={styles.retry}
+          />
         </View>
       ) : (
+
         <FlashList
           data={investments}
           keyExtractor={item => item._id}
@@ -202,6 +199,8 @@ const createStyles = t =>
     searchWrap: { paddingHorizontal: wp(5), marginBottom: hp(1.5), marginTop: hp(1) },
     scrollContent: { paddingBottom: hp(12), paddingHorizontal: wp(5) },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    skeleton: { marginTop: 0 },
+    retry: { marginTop: hp(1.5) },
     empty: { textAlign: 'center', marginTop: hp(10) },
     loadingMore: { paddingVertical: hp(2) },
     card: {

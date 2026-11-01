@@ -4,12 +4,15 @@ import { PostHogProvider } from 'posthog-react-native';
 import { ENV } from './src/config/env';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar, View, StyleSheet } from 'react-native';
 import useAppStore from '@store/useAppStore';
 import { useThemeColors } from '@hooks/useThemeColors';
 import ToastCustomProvider from '@contexts/ToastProvider.js';
 import RootNavigator from '@navigations/RootNavigator.js';
 import { initSentry } from '@services/sentry.js';
+import { queryClient, persistOptions } from '@services/queryClient.js';
 import { Label } from '@constants/globalstyle.js';
 import PrimaryButton from './src/components/ui/PrimaryButton';
 
@@ -69,7 +72,7 @@ const AppContent = () => {
       </View>
       <SafeAreaView
         edges={['bottom']}
-        style={{ backgroundColor: colors.white }}
+        style={{ backgroundColor: colors.surfacePrimary }}
       />
     </View>
   );
@@ -101,11 +104,21 @@ const App = () => {
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <AnalyticsProvider>
-            <ToastCustomProvider>
-              <AppContent />
-            </ToastCustomProvider>
-          </AnalyticsProvider>
+          {/* Draw under both system bars on every Android version, matching the
+              edge-to-edge mode Android 15+ enforces, so keyboard insets behave
+              identically across devices. The SafeAreaViews in AppContent pad. */}
+          <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+            <PersistQueryClientProvider
+              client={queryClient}
+              persistOptions={persistOptions}
+            >
+              <AnalyticsProvider>
+                <ToastCustomProvider>
+                  <AppContent />
+                </ToastCustomProvider>
+              </AnalyticsProvider>
+            </PersistQueryClientProvider>
+          </KeyboardProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </Sentry.ErrorBoundary>

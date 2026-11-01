@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { X, TrendingUp } from 'lucide-react-native';
 import { Label, borderRadius } from '../../../constants/globalstyle';
 import { hp, wp } from '../../../constants/responsive';
@@ -66,9 +67,10 @@ const InvestmentSetupModal = ({ visible, onClose, onConfirm, defaults }) => {
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      navigationBarTranslucent
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
           <TouchableWithoutFeedback>
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -207,7 +209,7 @@ const InvestmentSetupModal = ({ visible, onClose, onConfirm, defaults }) => {
               </View>
             </View>
           </TouchableWithoutFeedback>
-        </View>
+        </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </Modal>
   );

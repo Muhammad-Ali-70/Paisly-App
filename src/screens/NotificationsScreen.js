@@ -1,18 +1,25 @@
-﻿import React, { useEffect, useMemo, useCallback, useState } from 'react';
+﻿import React, { useMemo, useCallback, useState } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Bell, CheckCheck } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeColors } from '@hooks/useThemeColors';
 import ScreenHeader from '../components/common/Screenheader';
-import PrimaryLoader from '../components/ui/PrimaryLoader';
+import SkeletonSection from '../components/common/skeleton/SkeletonSection';
 import ApprovalCard from '../components/investment/ApprovalCard';
-import useNotificationStore from '../store/useNotificationStore';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useNotifications,
+  useMarkAsRead,
+  useMarkAllAsRead,
+} from '../queries/notifications';
+import { invalidateTransactionData } from '../queries/transactions';
 import { hp, wp } from '../constants/responsive';
 import { borderRadius, Label } from '../constants/globalstyle';
 import {
@@ -92,23 +99,41 @@ const NotificationScreen = ({ navigation }) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const nav = useNavigation();
   const [processingIds, setProcessingIds] = useState({});
+  const queryClient = useQueryClient();
   const {
-    notifications,
-    loading,
-    pagination,
-    fetchNotifications,
-    markAsRead,
-    markAllAsRead,
-  } = useNotificationStore();
+    data,
+    isPending: loading,
+    isFetchingNextPage: loadingMore,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useNotifications();
+  const notifications = useMemo(
+    () => data?.pages.flatMap(p => p.notifications) ?? [],
+    [data],
+  );
+  const [refreshing, setRefreshing] = useState(false);
+  // Both update the list and badge immediately and roll back on failure
+  const { mutate: markAsRead } = useMarkAsRead();
+  const { mutate: markAllAsRead } = useMarkAllAsRead();
 
-  useEffect(() => {
-    fetchNotifications({ page: 1 });
-  }, []);
+  // Approving/rejecting a return can add income, so refresh money data too
+  const afterReturnDecision = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['investments'] });
+    invalidateTransactionData(queryClient);
+  }, [queryClient]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const handleNotificationPress = useCallback(
     async (notification) => {
       if (!notification.read) {
-        await markAsRead(notification._id);
+        markAsRead(notification._id);
       }
 
       if (notification.type === 'budget_warning' || notification.type === 'budget_exceeded') {
@@ -134,15 +159,15 @@ const NotificationScreen = ({ navigation }) => {
       setProcessingIds(prev => ({ ...prev, [notification._id]: true }));
       try {
         await approveReturnApi(investmentId, returnId);
-        await markAsRead(notification._id);
-        fetchNotifications({ page: 1 });
+        markAsRead(notification._id);
+        afterReturnDecision();
       } catch (e) {
         Alert.alert('Error', e?.message || 'Failed to approve return');
       } finally {
         setProcessingIds(prev => ({ ...prev, [notification._id]: false }));
       }
     },
-    [markAsRead, fetchNotifications],
+    [markAsRead, afterReturnDecision],
   );
 
   const handleRejectReturn = useCallback(
@@ -160,8 +185,8 @@ const NotificationScreen = ({ navigation }) => {
               setProcessingIds(prev => ({ ...prev, [notification._id]: true }));
               try {
                 await rejectReturnApi(investmentId, returnId, 'remind_next');
-                await markAsRead(notification._id);
-                fetchNotifications({ page: 1 });
+                markAsRead(notification._id);
+                afterReturnDecision();
               } catch (e) {
                 Alert.alert('Error', e?.message || 'Failed to reject return');
               } finally {
@@ -176,8 +201,8 @@ const NotificationScreen = ({ navigation }) => {
               setProcessingIds(prev => ({ ...prev, [notification._id]: true }));
               try {
                 await rejectReturnApi(investmentId, returnId, 'stopped');
-                await markAsRead(notification._id);
-                fetchNotifications({ page: 1 });
+                markAsRead(notification._id);
+                afterReturnDecision();
               } catch (e) {
                 Alert.alert('Error', e?.message || 'Failed to reject return');
               } finally {
@@ -189,14 +214,12 @@ const NotificationScreen = ({ navigation }) => {
         ],
       );
     },
-    [markAsRead, fetchNotifications],
+    [markAsRead, afterReturnDecision],
   );
 
   const handleLoadMore = useCallback(() => {
-    if (pagination?.hasNextPage && !loading) {
-      fetchNotifications({ page: pagination.page + 1 });
-    }
-  }, [pagination, loading, fetchNotifications]);
+    if (hasNextPage && !loadingMore) fetchNextPage();
+  }, [hasNextPage, loadingMore, fetchNextPage]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -213,9 +236,15 @@ const NotificationScreen = ({ navigation }) => {
   );
 
   const renderFooter = useCallback(() => {
-    if (!loading) return null;
-    return <PrimaryLoader width={40} height={40} />;
-  }, [loading, styles]);
+    if (!loadingMore) return null;
+    return (
+      <ActivityIndicator
+        size="small"
+        color={theme.primary}
+        style={styles.loadingMore}
+      />
+    );
+  }, [loadingMore, theme, styles]);
 
   const hasUnread = notifications.some(n => !n.read);
 
@@ -227,7 +256,7 @@ const NotificationScreen = ({ navigation }) => {
         backIcon="arrow"
         rightElement={
           hasUnread ? (
-            <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => markAllAsRead()} activeOpacity={0.7}>
               <CheckCheck
                 size={wp(5.5)}
                 color={theme.primary}
@@ -238,7 +267,9 @@ const NotificationScreen = ({ navigation }) => {
         }
       />
 
-      {notifications.length === 0 && !loading ? (
+      {notifications.length === 0 && loading ? (
+        <SkeletonSection itemCount={6} showHeader={false} />
+      ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Bell size={wp(12)} color={theme.textMuted} strokeWidth={1.5} />
           <Label
@@ -259,6 +290,8 @@ const NotificationScreen = ({ navigation }) => {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={renderFooter}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
           contentContainerStyle={styles.listContent}
         />
       )}

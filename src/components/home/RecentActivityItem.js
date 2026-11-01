@@ -39,6 +39,7 @@ const RecentActivityItem = ({
   accountType,
   isTransfer,
   toAccountLabel,
+  pending,
   onPress,
 }) => {
   const isPositive = amount >= 0 && !isTransfer;
@@ -106,7 +107,12 @@ const RecentActivityItem = ({
   };
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.row}>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={pending}
+      activeOpacity={0.7}
+      style={[styles.row, pending && styles.pending]}
+    >
       {isTransfer ? (
         <View style={styles.transferIcon}>
           <ArrowRightLeft size={wp(6)} color="#0284C7" strokeWidth={1.8} />
@@ -150,6 +156,7 @@ const RecentActivityItem = ({
 
 const createStyles = t =>
   StyleSheet.create({
+    pending: { opacity: 0.55 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

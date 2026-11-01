@@ -3,13 +3,13 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   TouchableOpacity,
   Modal,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import {
   ArrowRightLeft,
   ArrowDownUp,
@@ -35,6 +35,8 @@ import { transferFundsApi } from '../../../services/accountService';
 import { getAccountTypeMeta } from '../../../constants/theme/accountMeta';
 import { getAccountMeta } from '../../../utils/accountMetaLookup';
 import useAccountStore from '../../../store/useAccountStore';
+import { queryClient } from '../../../services/queryClient';
+import { invalidateTransactionData } from '../../../queries/transactions';
 import { useToastService } from '../../../utils/ToastService';
 
 const TransferScreen = ({ navigation }) => {
@@ -97,6 +99,7 @@ const TransferScreen = ({ navigation }) => {
         description: description.trim() || undefined,
       });
       await fetchAccounts();
+      invalidateTransactionData(queryClient);
       toast.success('Transfer completed');
       navigation.goBack();
     } catch (e) {
@@ -198,7 +201,8 @@ const TransferScreen = ({ navigation }) => {
     <>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
+        automaticOffset
       >
         <ScreenHeader
           title="Transfer Funds"
@@ -403,7 +407,7 @@ const TransferScreen = ({ navigation }) => {
             variant="primary"
             size="lg"
             label={saving ? 'Transferring…' : 'Transfer'}
-            icon={
+            leftIcon={
               <ArrowRightLeft
                 size={wp(5)}
                 color={theme.onPrimary}

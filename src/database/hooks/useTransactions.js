@@ -1,94 +1,63 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { getTransactionsApi } from '../../services/transactionService';
+import { useCallback, useMemo, useState } from 'react';
+import { useTransactionList } from '../../queries/transactions';
+import { useRefreshOnFocus } from '../../hooks/useRefreshOnFocus';
 import { groupTransactions } from '../../utils/transactionUtils';
 
 /**
- * Drop-in replacement for the WatermelonDB useTransactions hook.
- * Fetches from the backend API with pagination and search support.
+ * History's view of the paged transaction list (TanStack infinite query).
+ *
+ * `loading` is only true while there is nothing to show yet: filter changes
+ * keep the previous list on screen, and transactions saved from
+ * AddTransaction are inserted into the cache optimistically.
  */
-export const useTransactions = ({ 
-  accountId, 
+export const useTransactions = ({
+  accountId,
   categoryIds,
-  month, 
-  year,
+  type,
+  search,
   dateFrom,
   dateTo,
   minAmount,
-  maxAmount
+  maxAmount,
 } = {}) => {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [pagination, setPagination] = useState(null);
-  const [error, setError] = useState(null);
-
-  const pageRef = useRef(1);
-  const hasMoreRef = useRef(true);
-
-  const fetchTransactions = useCallback(
-    async ({ page = 1, append = false } = {}) => {
-      if (page === 1) setLoading(true);
-      else setLoadingMore(true);
-
-      try {
-        const data = await getTransactionsApi({
-          accountId,
-          categoryIds,
-          month,
-          year,
-          dateFrom,
-          dateTo,
-          minAmount,
-          maxAmount,
-          page,
-          limit: 20,
-        });
-
-        setTransactions(prev =>
-          append ? [...prev, ...data.transactions] : data.transactions,
-        );
-        setPagination(data.pagination);
-        hasMoreRef.current = data.pagination.hasNextPage;
-        pageRef.current = page;
-        setError(null);
-      } catch (err) {
-        setError(err.message ?? 'Failed to load transactions');
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [accountId, categoryIds, month, year, dateFrom, dateTo, minAmount, maxAmount],
+  // categoryIds arrives as a new array every render; key it by value
+  const categoryKey = categoryIds?.join(',') ?? '';
+  const filters = useMemo(
+    () => ({
+      accountId,
+      categoryIds: categoryKey ? categoryKey.split(',') : undefined,
+      type,
+      search,
+      dateFrom,
+      dateTo,
+      minAmount,
+      maxAmount,
+    }),
+    [accountId, categoryKey, type, search, dateFrom, dateTo, minAmount, maxAmount],
   );
 
-  // Initial load and when filters change
-  useEffect(() => {
-    pageRef.current = 1;
-    hasMoreRef.current = true;
-    fetchTransactions({ page: 1, append: false });
-  }, [fetchTransactions]);
+  const query = useTransactionList(filters);
+  useRefreshOnFocus(['transactions', 'list']);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Called by FlashList onEndReached
-  const fetchNextPage = useCallback(() => {
-    if (!hasMoreRef.current || loadingMore || loading) return;
-    fetchTransactions({ page: pageRef.current + 1, append: true });
-  }, [fetchTransactions, loadingMore, loading]);
+  const transactions = useMemo(
+    () => query.data?.pages.flatMap(p => p.transactions) ?? [],
+    [query.data],
+  );
 
-  const refresh = useCallback(() => {
-    pageRef.current = 1;
-    hasMoreRef.current = true;
-    fetchTransactions({ page: 1, append: false });
-  }, [fetchTransactions]);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
 
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
-  // groupTransactions handles local search/filter on already-fetched data
+  // groupTransactions applies the local search/type filter
   const getGrouped = useCallback(
     (opts = {}) => groupTransactions(transactions, opts),
     [transactions],
@@ -96,14 +65,13 @@ export const useTransactions = ({
 
   return {
     transactions,
-    loading,
-    loadingMore,
-    pagination,
-    error,
-    totalExpenses,
-    totalIncome,
+    loading: query.isPending,
+    refreshing,
+    loadingMore: isFetchingNextPage,
+    // Errors only matter when there's no cached list to fall back on
+    error: query.isError && !query.data ? query.error?.message : null,
     getGrouped,
-    fetchNextPage,
+    fetchNextPage: loadMore,
     refresh,
   };
 };

@@ -8,6 +8,9 @@ import useAuthStore, {
 } from '../store/useAuthStore';
 import useAccountStore from '../store/useAccountStore';
 import useCategoryStore from '../store/useCategoryStore';
+import { queryClient } from '../services/queryClient';
+import { prefetchHomeData } from '../queries/transactions';
+import { debtSummaryQuery } from '../queries/debts';
 import TabNavigator from './TabNavigator';
 import SplashScreen from '../screens/onboarding/SplashScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
@@ -54,6 +57,9 @@ const RootStackNavigator = ({ pendingAction }) => {
     if (token && isOnboarded) {
       fetchAccounts();
       fetchCategories();
+      // Starts during the splash so Home usually mounts with fresh data
+      prefetchHomeData(queryClient);
+      queryClient.prefetchQuery(debtSummaryQuery);
     }
   }, [token, isOnboarded, fetchAccounts, fetchCategories]);
 
