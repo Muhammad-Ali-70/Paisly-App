@@ -1,11 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import OnboardingHeader from '../../components/onboarding/Onboardingheader';
@@ -93,58 +88,53 @@ const OnboardingScreen = () => {
 
   return (
     <View style={styles.safe}>
-      <KeyboardAvoidingView
+      <OnboardingHeader showSkip={false} />
+
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={hp(1)}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <OnboardingHeader showSkip={false} />
+        <OnboardingTagline
+          title="Master your money"
+          subtitle="The effortless way to track expenses and achieve your savings goals."
+        />
 
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <OnboardingTagline
-            title="Master your money"
-            subtitle="The effortless way to track expenses and achieve your savings goals."
+        <SectionDivider label="INITIAL SETUP" />
+
+        {ACCOUNT_CONFIG.map(account => (
+          <AccountSetupCard
+            key={account.id}
+            iconName={account.iconName}
+            iconColor={account.iconColor}
+            iconBg={account.iconBg}
+            name={account.name}
+            description={account.description}
+            accountType={account.accountType}
+            value={walletBalance}
+            onChangeText={setWalletBalance}
+            onAccountsChange={
+              account.accountType === 'bank'
+                ? setBankAccounts
+                : account.accountType === 'digitalWallet'
+                ? setDigitalWallets
+                : undefined
+            }
           />
+        ))}
 
-          <SectionDivider label="INITIAL SETUP" />
-
-          {ACCOUNT_CONFIG.map(account => (
-            <AccountSetupCard
-              key={account.id}
-              iconName={account.iconName}
-              iconColor={account.iconColor}
-              iconBg={account.iconBg}
-              name={account.name}
-              description={account.description}
-              accountType={account.accountType}
-              value={walletBalance}
-              onChangeText={setWalletBalance}
-              onAccountsChange={
-                account.accountType === 'bank'
-                  ? setBankAccounts
-                  : account.accountType === 'digitalWallet'
-                  ? setDigitalWallets
-                  : undefined
-              }
-            />
-          ))}
-
-          <View style={styles.cta}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={saving ? 'Saving…' : 'Get Started'}
-              onPress={handleGetStarted}
-              disabled={saving || !walletBalance}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <View style={styles.cta}>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label={saving ? 'Saving…' : 'Get Started'}
+            onPress={handleGetStarted}
+            disabled={saving || !walletBalance}
+          />
+        </View>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

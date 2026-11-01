@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { storage, mmkvStorage } from '../services/storage';
 import { signupApi, loginApi, getMeApi, verifySignupOtpApi, updateProfileApi, uploadAvatarApi, deleteAccountApi } from '../services/authService';
 import useAccountStore from './useAccountStore';
+import useTransactionStore from './useTransactionStore';
+import useNotificationStore from './useNotificationStore';
 
 const withLoading = async (set, fn) => {
   set({ isLoading: true, error: null });
@@ -85,8 +87,10 @@ const useAuthStore = create(
 
       logout: () => {
         storage.remove('token');
-        // Clear accounts on logout so stale data isn't shown on next login
+        // Clear cached user data on logout so it isn't shown on next login
         useAccountStore.getState().clearAccounts();
+        useTransactionStore.getState().clear();
+        useNotificationStore.getState().clearNotifications();
         set({ user: null, token: null, error: null, pendingAction: null });
       },
 

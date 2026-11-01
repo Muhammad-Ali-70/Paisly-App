@@ -1,58 +1,38 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import { hp, wp } from '../../../constants/responsive';
 import { borderRadius } from '../../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
+import { SkeletonPulse, SkeletonBox } from './Skeleton';
 
-const SkeletonSection = ({ itemCount = 3 }) => {
+/**
+ * Placeholder for a list of transaction / notification rows
+ * (icon, two text lines, trailing amount). Mirrors RecentActivityItem.
+ */
+const SkeletonSection = ({ itemCount = 3, showHeader = true, style }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <SkeletonPlaceholder borderRadius={borderRadius.sm} speed={1000}>
-      <View style={styles.section}>
+    <SkeletonPulse style={[styles.section, style]}>
+      {showHeader && (
         <View style={styles.headerRow}>
-          <SkeletonPlaceholder.Item
-            width={wp(28)}
-            height={hp(2)}
-            borderRadius={borderRadius.sm}
-          />
-          <SkeletonPlaceholder.Item
-            width={wp(18)}
-            height={hp(1.8)}
-            borderRadius={borderRadius.sm}
-          />
+          <SkeletonBox width={wp(28)} height={hp(2)} />
+          <SkeletonBox width={wp(18)} height={hp(1.8)} />
         </View>
+      )}
 
-        {Array.from({ length: itemCount }).map((_, i) => (
-          <View key={i} style={styles.itemRow}>
-            <SkeletonPlaceholder.Item
-              width={wp(11)}
-              height={wp(11)}
-              borderRadius={wp(5.5)}
-            />
-            <View style={styles.textCol}>
-              <SkeletonPlaceholder.Item
-                width="62%"
-                height={hp(1.6)}
-                borderRadius={borderRadius.sm}
-              />
-              <SkeletonPlaceholder.Item
-                width="38%"
-                height={hp(1.2)}
-                borderRadius={borderRadius.sm}
-              />
-            </View>
-            <SkeletonPlaceholder.Item
-              width={wp(14)}
-              height={hp(1.6)}
-              borderRadius={borderRadius.sm}
-            />
+      {Array.from({ length: itemCount }).map((_, i) => (
+        <View key={i} style={styles.itemRow}>
+          <SkeletonBox width={wp(11)} height={wp(11)} radius={borderRadius.md} />
+          <View style={styles.textCol}>
+            <SkeletonBox width="62%" height={hp(1.6)} />
+            <SkeletonBox width="38%" height={hp(1.2)} />
           </View>
-        ))}
-      </View>
-    </SkeletonPlaceholder>
+          <SkeletonBox width={wp(14)} height={hp(1.6)} />
+        </View>
+      ))}
+    </SkeletonPulse>
   );
 };
 

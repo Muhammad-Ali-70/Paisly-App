@@ -10,19 +10,22 @@ const useNotificationStore = create((set, get) => ({
   notifications: [],
   unreadCount: 0,
   loading: false,
+  loadingMore: false,
   pagination: null,
 
   fetchNotifications: async ({ page = 1, unreadOnly = false } = {}) => {
-    set({ loading: true });
+    // Page 1 drives the full-screen skeleton; later pages only the list footer
+    set(page === 1 ? { loading: true } : { loadingMore: true });
     try {
       const data = await getNotificationsApi({ page, unreadOnly });
       set((state) => ({
         notifications: page === 1 ? data.notifications : [...state.notifications, ...data.notifications],
         pagination: data.pagination,
         loading: false,
+        loadingMore: false,
       }));
     } catch (err) {
-      set({ loading: false });
+      set({ loading: false, loadingMore: false });
     }
   },
 

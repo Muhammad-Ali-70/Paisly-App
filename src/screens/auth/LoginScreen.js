@@ -1,12 +1,10 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   // Image, // TODO(post-MVP): Google Sign-In button
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import AppTextInput from '../../components/ui/AppTextInput';
@@ -25,7 +23,8 @@ const LoginScreen = ({ navigation }) => {
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
-  const { login, isLoading } = useAuthStore();
+  const login = useAuthStore(s => s.login);
+  const isLoading = useAuthStore(s => s.isLoading);
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -66,94 +65,89 @@ const LoginScreen = ({ navigation }) => {
   }, [email, password, rememberMe, login]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={hp(1)}
-    >
-      <View style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <AuthTagline
-            title="Welcome Back"
-            subtitle="Sign in to continue tracking your finances."
-          />
+    <View style={styles.safe}>
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AuthTagline
+          title="Welcome Back"
+          subtitle="Sign in to continue tracking your finances."
+        />
 
-          <AppTextInput
-            label="Email Address"
-            placeholder="john@example.com"
-            value={email}
-            onChangeText={text => {
-              setEmail(text);
-              clearError('email');
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-            leftIconName="mail"
-          />
+        <AppTextInput
+          label="Email Address"
+          placeholder="john@example.com"
+          value={email}
+          onChangeText={text => {
+            setEmail(text);
+            clearError('email');
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+          leftIconName="mail"
+        />
 
-          <AppTextInput
-            label="Password"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={text => {
-              setPassword(text);
-              clearError('password');
-            }}
-            secureTextEntry={!showPassword}
-            error={errors.password}
-            leftIconName="lock"
-            rightIconName={showPassword ? 'eye' : 'eye-off'}
-            onRightIconPress={() => setShowPassword(v => !v)}
-          />
+        <AppTextInput
+          label="Password"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={text => {
+            setPassword(text);
+            clearError('password');
+          }}
+          secureTextEntry={!showPassword}
+          error={errors.password}
+          leftIconName="lock"
+          rightIconName={showPassword ? 'eye' : 'eye-off'}
+          onRightIconPress={() => setShowPassword(v => !v)}
+        />
 
-          <LoginOptionsRow
-            rememberMe={rememberMe}
-            onRememberMeToggle={() => setRememberMe(v => !v)}
-            onForgotPassword={() => navigation.navigate('ForgotPasswordScreen')}
-          />
+        <LoginOptionsRow
+          rememberMe={rememberMe}
+          onRememberMeToggle={() => setRememberMe(v => !v)}
+          onForgotPassword={() => navigation.navigate('ForgotPasswordScreen')}
+        />
 
-          <View style={styles.ctaWrapper}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={isLoading ? 'Signing in…' : 'Log In'}
-              onPress={handleLogin}
-              loading={isLoading}
-              disabled={isLoading}
-            />
-          </View>
-
-          {/* TODO(post-MVP): re-enable once Google Sign-In is wired up
-          <SectionDivider label="OR CONTINUE WITH" style={styles.divider} />
-
+        <View style={styles.ctaWrapper}>
           <PrimaryButton
-            variant="outline"
+            variant="primary"
             size="lg"
-            label="Google"
-            leftIcon={
-              <Image
-                source={GoogleImage}
-                style={styles.googleLogo}
-                resizeMode="contain"
-              />
-            }
-            onPress={() => {}}
+            label={isLoading ? 'Signing in…' : 'Log In'}
+            onPress={handleLogin}
+            loading={isLoading}
+            disabled={isLoading}
           />
-          */}
+        </View>
 
-          <AuthFooter
-            prompt="Don't have an account?"
-            actionLabel="Sign Up"
-            onActionPress={() => navigation.navigate('SignUpScreen')}
-          />
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+        {/* TODO(post-MVP): re-enable once Google Sign-In is wired up
+        <SectionDivider label="OR CONTINUE WITH" style={styles.divider} />
+
+        <PrimaryButton
+          variant="outline"
+          size="lg"
+          label="Google"
+          leftIcon={
+            <Image
+              source={GoogleImage}
+              style={styles.googleLogo}
+              resizeMode="contain"
+            />
+          }
+          onPress={() => {}}
+        />
+        */}
+
+        <AuthFooter
+          prompt="Don't have an account?"
+          actionLabel="Sign Up"
+          onActionPress={() => navigation.navigate('SignUpScreen')}
+        />
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

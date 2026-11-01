@@ -3,11 +3,10 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { CheckCircle } from 'lucide-react-native';
 import { Label } from '../../../constants/globalstyle';
 import AmountHeader from '../../../components/addexpense/AmountHeader';
@@ -29,10 +28,10 @@ import {
   CATEGORIES,
   INCOME_CATEGORIES,
 } from '../../../constants/theme/accountMeta';
-import { createTransactionApi } from '../../../services/transactionService';
 import { createInvestmentApi } from '../../../services/investmentService';
 import { getAccountDebtsApi } from '../../../services/debtService';
 import useAccountStore from '../../../store/useAccountStore';
+import useTransactionStore from '../../../store/useTransactionStore';
 import useCategoryStore from '../../../store/useCategoryStore';
 import useAppStore from '../../../store/useAppStore';
 import { useToastService } from '../../../utils/ToastService';
@@ -214,42 +213,78 @@ const AddTransactionScreen = ({ navigation, route }) => {
       return;
     }
 
-    setSaving(true);
-    try {
-      const isInvestment =
-        isExpense && category === 'investment' && investmentConfig;
+    const isInvestment =
+      isExpense && category === 'investment' && investmentConfig;
 
-      if (isInvestment) {
-        await createInvestmentApi({
-          accountId: sourceId,
-          amount: parsedAmount,
-          category: 'investment',
-          description: description.trim(),
-          note: notes.trim(),
-          date: date.toISOString(),
-          title: description.trim() || 'Investment',
-          ...investmentConfig,
-        });
-      } else {
-        await createTransactionApi({
-          accountId: sourceId,
-          type,
-          amount: parsedAmount,
-          category: isExpense ? category : incomeCategory,
-          description: description.trim(),
-          note: notes.trim(),
-          date: date.toISOString(),
-          debtId: useDebtMoney && selectedDebtId ? selectedDebtId : undefined,
-        });
+    if (!isInvestment) {
+      const account = accounts.find(a => a._id === sourceId);
+      if (!account) {
+        Alert.alert('No account', 'Please select an account.');
+        return;
+      }
+      // Same rule the server enforces; checked up front because the save
+      // below is optimistic and the user will already have left this screen.
+      if (isExpense && (account.balance ?? 0) < parsedAmount) {
+        toast.warning('Insufficient balance in this account.');
+        return;
       }
 
-      useAccountStore.getState().fetchAccounts();
-      navigation?.navigate('TabNavigator', {
-        screen: 'History',
-        params: { refresh: Date.now() },
+      const payload = {
+        accountId: sourceId,
+        type,
+        amount: parsedAmount,
+        category: isExpense ? category : incomeCategory,
+        description: description.trim(),
+        note: notes.trim(),
+        date: date.toISOString(),
+        debtId: useDebtMoney && selectedDebtId ? selectedDebtId : undefined,
+      };
+      const { _id, label, type: accountType, color, initials } = account;
+
+      // Optimistic: the row shows up in History/Home right away and rolls
+      // back with a toast if the server rejects it.
+      useTransactionStore
+        .getState()
+        .createTransaction(payload, {
+          _id,
+          label,
+          type: accountType,
+          color,
+          initials,
+        })
+        .catch(e => {
+          console.error('Save transaction failed:', e);
+          const message =
+            e?.message ?? 'Could not save transaction. Please try again.';
+          if (message === 'Insufficient balance.') {
+            toast.warning('Insufficient balance in this account.');
+          } else {
+            toast.error(`Transaction not saved: ${message}`);
+          }
+        });
+
+      navigation?.navigate('TabNavigator', { screen: 'History' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createInvestmentApi({
+        accountId: sourceId,
+        amount: parsedAmount,
+        category: 'investment',
+        description: description.trim(),
+        note: notes.trim(),
+        date: date.toISOString(),
+        title: description.trim() || 'Investment',
+        ...investmentConfig,
       });
+
+      useAccountStore.getState().fetchAccounts();
+      useTransactionStore.getState().invalidate();
+      navigation?.navigate('TabNavigator', { screen: 'History' });
     } catch (e) {
-      console.error('Save transaction failed:', e);
+      console.error('Save investment failed:', e);
 
       const message =
         e?.message ?? 'Could not save transaction. Please try again.';
@@ -267,7 +302,8 @@ const AddTransactionScreen = ({ navigation, route }) => {
   return (
     <KeyboardAvoidingView
       style={styles.safe}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      automaticOffset
     >
       <TransactionTypeHeader
         type={type}
@@ -373,7 +409,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
             onPress={() =>
               navigation?.navigate('TabNavigator', {
                 screen: 'User',
-                params: { screen: 'TransferScreen' },
+                params: { screen: 'TransferScreen', initial: false },
               })
             }
           />

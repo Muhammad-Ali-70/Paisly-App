@@ -13,7 +13,8 @@ import { handleShortcutAction } from '../utils/deepLinkHandler';
 const RootNavigator = () => {
   const navigationRef = React.useRef();
   const toast = useToastService();
-  const authStore = useAuthStore();
+  const toastRef = React.useRef(toast);
+  toastRef.current = toast;
   const pendingAction = useAuthStore(selectPendingAction);
 
   useEffect(() => {
@@ -21,13 +22,23 @@ const RootNavigator = () => {
 
     getInitialShortcut().then(shortcutItem => {
       if (shortcutItem && navigationRef.current) {
-        handleShortcutAction(shortcutItem, navigationRef.current, authStore, toast);
+        handleShortcutAction(
+          shortcutItem,
+          navigationRef.current,
+          useAuthStore.getState(),
+          toastRef.current,
+        );
       }
     });
 
     const handleShortcut = shortcutItem => {
       if (navigationRef.current) {
-        handleShortcutAction(shortcutItem, navigationRef.current, authStore, toast);
+        handleShortcutAction(
+          shortcutItem,
+          navigationRef.current,
+          useAuthStore.getState(),
+          toastRef.current,
+        );
       }
     };
 
@@ -36,7 +47,9 @@ const RootNavigator = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [authStore, toast]);
+  // Run once: read auth state at call time instead of subscribing to the whole
+  // store, which re-ran this effect on every auth change (e.g. isLoading).
+  }, []);
 
   return (
     <NavigationContainer ref={navigationRef}>

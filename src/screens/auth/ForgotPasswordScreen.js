@@ -1,11 +1,9 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import AppTextInput from '../../components/ui/AppTextInput';
@@ -50,55 +48,50 @@ const ForgotPasswordScreen = ({ navigation }) => {
   }, [email, navigation]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={hp(1)}
-    >
-      <View style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <AuthTagline
-            title="Forgot Password?"
-            subtitle="No worries. Enter your email and we'll send you a 6-digit OTP."
-          />
+    <View style={styles.safe}>
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AuthTagline
+          title="Forgot Password?"
+          subtitle="No worries. Enter your email and we'll send you a 6-digit OTP."
+        />
 
-          <AppTextInput
-            label="Email Address"
-            placeholder="john@example.com"
-            value={email}
-            onChangeText={text => {
-              setEmail(text);
-              if (emailError) setEmailError('');
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={emailError}
-            leftIconName="mail"
-          />
+        <AppTextInput
+          label="Email Address"
+          placeholder="john@example.com"
+          value={email}
+          onChangeText={text => {
+            setEmail(text);
+            if (emailError) setEmailError('');
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={emailError}
+          leftIconName="mail"
+        />
 
-          <View style={styles.ctaWrapper}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={loading ? 'Sending OTP…' : 'Send OTP'}
-              onPress={handleSubmit}
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
-
-          <AuthFooter
-            prompt="Remember your password?"
-            actionLabel="Log In"
-            onActionPress={() => navigation.navigate('LoginScreen')}
+        <View style={styles.ctaWrapper}>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label={loading ? 'Sending OTP…' : 'Send OTP'}
+            onPress={handleSubmit}
+            loading={loading}
+            disabled={loading}
           />
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+
+        <AuthFooter
+          prompt="Remember your password?"
+          actionLabel="Log In"
+          onActionPress={() => navigation.navigate('LoginScreen')}
+        />
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

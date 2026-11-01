@@ -1,12 +1,10 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { Label } from '../../constants/globalstyle';
@@ -82,84 +80,79 @@ const VerifyOTPScreen = ({ navigation, route }) => {
   }, [email, isSignupFlow]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={hp(1)}
-    >
-      <View style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <View style={styles.safe}>
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AuthTagline
+          title={isSignupFlow ? 'Verify Email' : 'Enter OTP'}
+          subtitle={
+            isSignupFlow
+              ? `We sent a 6-digit code to ${email}. Verify to activate your account.`
+              : `We sent a 6-digit code to ${email}. It expires in 10 minutes.`
+          }
+        />
+
+        <Label
+          type="bodySmall"
+          weight="semiBold"
+          color="textMain"
+          style={styles.otpLabel}
         >
-          <AuthTagline
-            title={isSignupFlow ? 'Verify Email' : 'Enter OTP'}
-            subtitle={
-              isSignupFlow
-                ? `We sent a 6-digit code to ${email}. Verify to activate your account.`
-                : `We sent a 6-digit code to ${email}. It expires in 10 minutes.`
-            }
-          />
+          Verification Code
+        </Label>
 
-          <Label
-            type="bodySmall"
-            weight="semiBold"
-            color="textMain"
-            style={styles.otpLabel}
-          >
-            Verification Code
+        <OtpInput
+          length={6}
+          value={otp}
+          onChange={val => {
+            setOtp(val);
+            if (otpError) setOtpError('');
+          }}
+          error={otpError}
+        />
+
+        <View style={styles.ctaWrapper}>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label={loading ? 'Verifying…' : 'Verify OTP'}
+            onPress={handleVerify}
+            loading={loading}
+            disabled={loading || otp.length < 6}
+          />
+        </View>
+
+        <View style={styles.resendRow}>
+          <Label type="bodySmall" color="textMuted">
+            Didn't receive it?{' '}
           </Label>
-
-          <OtpInput
-            length={6}
-            value={otp}
-            onChange={val => {
-              setOtp(val);
-              if (otpError) setOtpError('');
-            }}
-            error={otpError}
-          />
-
-          <View style={styles.ctaWrapper}>
-            <PrimaryButton
-              variant="primary"
-              size="lg"
-              label={loading ? 'Verifying…' : 'Verify OTP'}
-              onPress={handleVerify}
-              loading={loading}
-              disabled={loading || otp.length < 6}
-            />
-          </View>
-
-          <View style={styles.resendRow}>
-            <Label type="bodySmall" color="textMuted">
-              Didn't receive it?{' '}
+          <TouchableOpacity
+            onPress={handleResend}
+            disabled={resending}
+            activeOpacity={0.7}
+          >
+            <Label type="bodySmall" weight="semiBold" color="primary">
+              {resending ? 'Sending…' : 'Resend OTP'}
             </Label>
-            <TouchableOpacity
-              onPress={handleResend}
-              disabled={resending}
-              activeOpacity={0.7}
-            >
-              <Label type="bodySmall" weight="semiBold" color="primary">
-                {resending ? 'Sending…' : 'Resend OTP'}
-              </Label>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.backRow}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
-            >
-              <Label type="bodySmall" weight="semiBold" color="textMuted">
-                {isSignupFlow ? '← Back to Sign Up' : '← Change email'}
-              </Label>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+        <View style={styles.backRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Label type="bodySmall" weight="semiBold" color="textMuted">
+              {isSignupFlow ? '← Back to Sign Up' : '← Change email'}
+            </Label>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

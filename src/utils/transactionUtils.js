@@ -104,6 +104,7 @@ export const groupTransactions = (
     buckets[key].transactions.push({
       id,
       isTransfer,
+      pending: !!t.pending,
       iconName: isTransfer ? 'transfer' : meta.iconName,
       iconBg: isTransfer ? '#F0F9FF' : meta.iconBg,
       iconColor: isTransfer ? '#0284C7' : meta.iconColor,

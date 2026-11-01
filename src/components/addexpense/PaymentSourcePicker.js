@@ -20,10 +20,17 @@ const PaymentSourcePicker = ({ activeId, onSelect, onSeeAll }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const quickAccounts = [
+  const ordered = [
     ...accounts.filter(a => a.type === 'wallet'),
     ...accounts.filter(a => a.type !== 'wallet'),
-  ].slice(0, 3);
+  ];
+  const quickAccounts = ordered.slice(0, 3);
+  // An account picked from "See All" must stay visible (and highlighted) in
+  // the row, so it takes the last slot when it isn't one of the first three.
+  const active = ordered.find(a => a._id === activeId);
+  if (active && !quickAccounts.includes(active)) {
+    quickAccounts[quickAccounts.length - 1] = active;
+  }
 
   if (loading) {
     return (

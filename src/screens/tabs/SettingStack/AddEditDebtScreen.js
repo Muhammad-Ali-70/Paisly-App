@@ -3,10 +3,9 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { CheckCircle } from 'lucide-react-native';
 import ScreenHeader from '../../../components/common/Screenheader';
 import AppTextInput from '../../../components/ui/AppTextInput';
@@ -205,7 +204,8 @@ const AddEditDebtScreen = ({ navigation, route }) => {
   return (
     <KeyboardAvoidingView
       style={styles.safe}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      automaticOffset
     >
       <ScreenHeader
         title={isEditing ? 'Edit Debt' : 'Add Debt'}

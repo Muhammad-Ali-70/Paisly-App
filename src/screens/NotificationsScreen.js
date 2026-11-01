@@ -4,13 +4,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Bell, CheckCheck } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeColors } from '@hooks/useThemeColors';
 import ScreenHeader from '../components/common/Screenheader';
-import PrimaryLoader from '../components/ui/PrimaryLoader';
+import SkeletonSection from '../components/common/skeleton/SkeletonSection';
 import ApprovalCard from '../components/investment/ApprovalCard';
 import useNotificationStore from '../store/useNotificationStore';
 import { hp, wp } from '../constants/responsive';
@@ -95,6 +96,7 @@ const NotificationScreen = ({ navigation }) => {
   const {
     notifications,
     loading,
+    loadingMore,
     pagination,
     fetchNotifications,
     markAsRead,
@@ -103,7 +105,7 @@ const NotificationScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchNotifications({ page: 1 });
-  }, []);
+  }, [fetchNotifications]);
 
   const handleNotificationPress = useCallback(
     async (notification) => {
@@ -193,10 +195,10 @@ const NotificationScreen = ({ navigation }) => {
   );
 
   const handleLoadMore = useCallback(() => {
-    if (pagination?.hasNextPage && !loading) {
+    if (pagination?.hasNextPage && !loading && !loadingMore) {
       fetchNotifications({ page: pagination.page + 1 });
     }
-  }, [pagination, loading, fetchNotifications]);
+  }, [pagination, loading, loadingMore, fetchNotifications]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -213,9 +215,15 @@ const NotificationScreen = ({ navigation }) => {
   );
 
   const renderFooter = useCallback(() => {
-    if (!loading) return null;
-    return <PrimaryLoader width={40} height={40} />;
-  }, [loading, styles]);
+    if (!loadingMore) return null;
+    return (
+      <ActivityIndicator
+        size="small"
+        color={theme.primary}
+        style={styles.loadingMore}
+      />
+    );
+  }, [loadingMore, theme, styles]);
 
   const hasUnread = notifications.some(n => !n.read);
 
@@ -238,7 +246,9 @@ const NotificationScreen = ({ navigation }) => {
         }
       />
 
-      {notifications.length === 0 && !loading ? (
+      {notifications.length === 0 && loading ? (
+        <SkeletonSection itemCount={6} showHeader={false} />
+      ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Bell size={wp(12)} color={theme.textMuted} strokeWidth={1.5} />
           <Label

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -30,9 +30,8 @@ import RecentActivityItem from '../../components/home/RecentActivityItem';
 import TransactionDetailModal from '../../components/modals/transaction/TransactionDetailModal';
 import AccountFilterModal from '../../components/modals/history/AccountFilterModal';
 import CategoryFilterModal from '../../components/modals/history/CategoryFilterModal';
-import PrimaryLoader from '../../components/ui/PrimaryLoader';
+import SkeletonSection from '../../components/common/skeleton/SkeletonSection';
 import PrimaryButton from '../../components/ui/PrimaryButton';
-import { getRandomLoadingText } from '../../constants/dummy/loadingTexts';
 import { useTransactions } from '../../database/hooks/useTransactions';
 import useAccountStore from '../../store/useAccountStore';
 import useCategoryStore from '../../store/useCategoryStore';
@@ -82,7 +81,7 @@ const saveFilters = filters => {
   }
 };
 
-const HistoryScreen = ({ route }) => {
+const HistoryScreen = () => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation();
@@ -99,7 +98,6 @@ const HistoryScreen = ({ route }) => {
   const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedTx, setSelectedTx] = useState(null);
-  const [loadingText] = useState(getRandomLoadingText);
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -137,11 +135,16 @@ const HistoryScreen = ({ route }) => {
     return Array.from(seen.values());
   }, [customCategories]);
 
+  // Restore saved filters once accounts are available. Accounts get a new
+  // identity on every balance change, so this must not re-run after that.
+  const filtersRestoredRef = useRef(false);
   useEffect(() => {
+    if (filtersRestoredRef.current || accounts.length === 0) return;
+    filtersRestoredRef.current = true;
     const savedFilters = loadFilters();
     if (savedFilters) {
       if (savedFilters.activeFilter) setActiveFilter(savedFilters.activeFilter);
-      if (savedFilters.selectedAccountId && accounts.length > 0) {
+      if (savedFilters.selectedAccountId) {
         const account = accounts.find(
           a => a._id === savedFilters.selectedAccountId,
         );
@@ -170,20 +173,28 @@ const HistoryScreen = ({ route }) => {
   const debouncedMinAmount = useDebounce(minAmount, 600);
   const debouncedMaxAmount = useDebounce(maxAmount, 600);
 
-  const { loading, loadingMore, error, getGrouped, fetchNextPage, refresh } =
-    useTransactions({
-      accountId: selectedAccount?._id,
-      categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      minAmount: debouncedMinAmount || undefined,
-      maxAmount: debouncedMaxAmount || undefined,
-    });
+  const typeFilter = ['expense', 'income', 'transfer'].includes(activeFilter)
+    ? activeFilter
+    : undefined;
 
-  const refreshTrigger = route?.params?.refresh;
-  useEffect(() => {
-    if (refreshTrigger) refresh();
-  }, [refreshTrigger, refresh]);
+  const {
+    loading,
+    refreshing,
+    loadingMore,
+    error,
+    getGrouped,
+    fetchNextPage,
+    refresh,
+  } = useTransactions({
+    type: typeFilter,
+    search: debouncedSearch.trim() || undefined,
+    accountId: selectedAccount?._id,
+    categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    minAmount: debouncedMinAmount || undefined,
+    maxAmount: debouncedMaxAmount || undefined,
+  });
 
   const groups = useMemo(() => {
     return getGrouped({
@@ -353,17 +364,7 @@ const HistoryScreen = ({ route }) => {
       )}
 
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <PrimaryLoader width={100} height={100} />
-          <Label
-            type="bodySmall"
-            weight="regular"
-            color="textMuted"
-            style={styles.loadingText}
-          >
-            {loadingText}
-          </Label>
-        </View>
+        <SkeletonSection itemCount={7} style={styles.skeleton} />
       ) : error ? (
         <View style={styles.errorWrap}>
           <Label type="bodySmall" color="error" style={styles.empty}>
@@ -385,7 +386,7 @@ const HistoryScreen = ({ route }) => {
           onEndReached={fetchNextPage}
           onEndReachedThreshold={0.4}
           onRefresh={refresh}
-          refreshing={loading}
+          refreshing={refreshing}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
           contentContainerStyle={styles.scrollContent}
@@ -447,14 +448,8 @@ const createStyles = t =>
       paddingTop: hp(2.5),
       paddingBottom: hp(1),
     },
-    loadingWrap: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    loadingText: {
-      marginTop: hp(1.5),
-      textAlign: 'center',
+    skeleton: {
+      marginTop: hp(1),
     },
     errorWrap: {
       flex: 1,

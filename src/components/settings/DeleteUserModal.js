@@ -3,9 +3,9 @@ import {
   View,
   Modal,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   StyleSheet,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { AlertTriangle } from 'lucide-react-native';
 import { borderRadius, Label } from '../../constants/globalstyle';
 import AppTextInput from '../ui/AppTextInput';
@@ -33,6 +33,7 @@ const DeleteUserModal = ({ visible, loading, error, onConfirm, onCancel }) => {
       animationType="fade"
       onRequestClose={close}
       statusBarTranslucent
+      navigationBarTranslucent
     >
       <TouchableWithoutFeedback onPress={close}>
         <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
