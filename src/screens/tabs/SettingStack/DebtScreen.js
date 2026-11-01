@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,10 +12,10 @@ import { useThemeColors } from '@hooks/useThemeColors';
 import { Label } from '../../../constants/globalstyle';
 import ScreenHeader from '../../../components/common/Screenheader';
 import SearchBar from '../../../components/ui/SearchBar';
-import PrimaryLoader from '../../../components/ui/PrimaryLoader';
+import SkeletonSection from '../../../components/common/skeleton/SkeletonSection';
 import PrimaryButton from '../../../components/ui/PrimaryButton';
-import { getRandomLoadingText } from '../../../constants/dummy/loadingTexts';
-import { getDebtsApi, getDebtSummaryApi } from '../../../services/debtService';
+import { useDebtList, useDebtSummary } from '../../../queries/debts';
+import { useRefreshOnFocus } from '../../../hooks/useRefreshOnFocus';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { formatDate } from '../../../utils/date';
 
@@ -53,80 +53,33 @@ const DebtScreen = ({ navigation }) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [search, setSearch] = useState('');
-  const [debts, setDebts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingText] = useState(getRandomLoadingText);
-  const [summary, setSummary] = useState({ totalOutstanding: 0, totalReceivable: 0 });
-  const [loadingSummary, setLoadingSummary] = useState(true);
 
   const debouncedSearch = useDebounce(search, 400);
 
-  const fetchDebts = useCallback(
-    async (isRefresh = false, searchParam = debouncedSearch, pageNum = 1) => {
-      if (isRefresh) setLoading(true);
-      else if (pageNum === 1) setLoading(true);
-      else setLoadingMore(true);
+  const debtsQuery = useDebtList(debouncedSearch.trim());
+  const { data: summary } = useDebtSummary();
+  // Pick up debts added/edited/deleted on other screens when coming back
+  useRefreshOnFocus(['debts']);
 
-      try {
-        const response = await getDebtsApi({
-          search: searchParam,
-          page: pageNum,
-          limit: 10,
-        });
-        if (isRefresh || pageNum === 1) {
-          setDebts(response.data);
-        } else {
-          setDebts(prev => [...prev, ...response.data]);
-        }
-        setHasMore(response.pagination?.hasNextPage || false);
-        setPage(pageNum);
-      } catch (err) {
-        console.error('Failed to load debts:', err);
-        // Handle error display
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
-      }
-    },
-    [debouncedSearch],
+  const debts = useMemo(
+    () => debtsQuery.data?.pages.flatMap(p => p.data) ?? [],
+    [debtsQuery.data],
   );
+  // Skeleton only on a true first load; cached lists render immediately
+  const loading = debtsQuery.isPending;
+  const loadingMore = debtsQuery.isFetchingNextPage;
 
-  useEffect(() => {
-    fetchDebts(true);
-    fetchSummary();
-  }, [debouncedSearch, fetchDebts]);
-
-  const fetchSummary = useCallback(async () => {
-    setLoadingSummary(true);
-    try {
-      const data = await getDebtSummaryApi();
-      setSummary({
-        totalOutstanding: data.totalOutstanding || 0,
-        totalReceivable: data.totalReceivable || 0,
-      });
-    } catch (err) {
-      console.error('Failed to load debt summary:', err);
-    } finally {
-      setLoadingSummary(false);
-    }
-  }, []);
-
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchDebts(true, debouncedSearch, 1);
-    fetchSummary();
-  }, [debouncedSearch, fetchDebts, fetchSummary]);
+    await debtsQuery.refetch();
+    setRefreshing(false);
+  }, [debtsQuery]);
 
+  const { hasNextPage, isFetching, fetchNextPage: loadNextPage } = debtsQuery;
   const fetchNextPage = useCallback(() => {
-    if (hasMore && !loadingMore && !loading) {
-      fetchDebts(false, debouncedSearch, page + 1);
-    }
-  }, [hasMore, loadingMore, loading, debouncedSearch, page, fetchDebts]);
+    if (hasNextPage && !isFetching) loadNextPage();
+  }, [hasNextPage, isFetching, loadNextPage]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -172,7 +125,7 @@ const DebtScreen = ({ navigation }) => {
         onBack={() => navigation.goBack()}
       />
 
-      {!loadingSummary && (summary.totalOutstanding > 0 || summary.totalReceivable > 0) && (
+      {summary && (summary.totalOutstanding > 0 || summary.totalReceivable > 0) && (
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
@@ -205,19 +158,22 @@ const DebtScreen = ({ navigation }) => {
         />
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingWrap}>
-          <PrimaryLoader width={100} height={100} />
-          <Label
-            type="bodySmall"
-            weight="regular"
-            color="textMuted"
-            style={styles.loadingText}
-          >
-            {loadingText}
+      {loading ? (
+        <SkeletonSection itemCount={6} showHeader={false} style={styles.skeleton} />
+      ) : debtsQuery.isError && debts.length === 0 ? (
+        <View style={styles.errorWrap}>
+          <Label type="bodySmall" color="error" style={styles.errorText}>
+            {debtsQuery.error?.message || 'Failed to load debts.'}
           </Label>
+          <PrimaryButton
+            variant="primary"
+            size="sm"
+            label="Retry"
+            onPress={() => debtsQuery.refetch()}
+          />
         </View>
       ) : (
+
         <FlashList
           data={debts}
           keyExtractor={item => item._id || item.id}
@@ -238,7 +194,7 @@ const DebtScreen = ({ navigation }) => {
           variant="primary"
           size="lg"
           label="Add New Debt"
-          icon={<PlusCircle size={wp(5)} color={theme.onPrimary} />}
+          leftIcon={<PlusCircle size={wp(5)} color={theme.onPrimary} />}
           onPress={() => navigation.navigate('AddEditDebtScreen')}
         />
       </View>
@@ -261,14 +217,18 @@ const createStyles = t =>
       paddingBottom: hp(12),
       paddingHorizontal: wp(5),
     },
-    loadingWrap: {
+    skeleton: {
+      marginTop: 0,
+    },
+    errorWrap: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: hp(1.5),
     },
-    loadingText: {
-      marginTop: hp(1.5),
+    errorText: {
       textAlign: 'center',
+      paddingHorizontal: wp(10),
     },
     empty: {
       textAlign: 'center',

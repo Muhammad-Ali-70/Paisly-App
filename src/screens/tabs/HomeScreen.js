@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 
@@ -15,10 +14,10 @@ import GettingStartedCard from '../../components/home/GettingStartedCard';
 
 import useAccountStore from '../../store/useAccountStore';
 import useCategoryStore from '../../store/useCategoryStore';
-import useTransactionStore, {
-  mergeOverlay,
-  RECENT_LIMIT,
-} from '../../store/useTransactionStore';
+import useAppStore from '../../store/useAppStore';
+import { useActivity, useDashboard } from '../../queries/transactions';
+import { useDebtSummary } from '../../queries/debts';
+import { useRefreshOnFocus } from '@hooks/useRefreshOnFocus';
 import { groupTransactions } from '../../utils/transactionUtils';
 import HomeSkeleton from '../../components/home/HomeSkeleton';
 import PrimaryButton from '../../components/ui/PrimaryButton';
@@ -33,48 +32,43 @@ const HomeScreen = ({ navigation }) => {
   const categories = useCategoryStore(s => s.categories);
   const fetchCategories = useCategoryStore(s => s.fetchCategories);
 
-  // Cached (persisted) dashboard: shown instantly, refreshed in the background
-  const dashboard = useTransactionStore(s => s.dashboard);
-  const debtSummary = useTransactionStore(s => s.debtSummary);
-  const loadError = useTransactionStore(s => s.dashboardError);
-  const overlay = useTransactionStore(s => s.overlay);
-  const fetchDashboard = useTransactionStore(s => s.fetchDashboard);
+  // Persisted queries: cached data shows instantly, refetched in the background.
+  // Just-added transactions are written into this cache optimistically.
+  const dashboardQuery = useDashboard();
+  const debtQuery = useDebtSummary();
+  const activityQuery = useActivity();
+  useRefreshOnFocus(['dashboard']);
+  useRefreshOnFocus(['debts', 'summary']);
   const [refreshing, setRefreshing] = useState(false);
 
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
+  const dashboard = dashboardQuery.data;
+  const debtSummary = debtQuery.data ?? {
+    totalOutstanding: 0,
+    totalReceivable: 0,
+  };
 
-  // Just-added transactions appear before the server round-trip completes
-  const recentTransactions = useMemo(() => {
-    const merged = mergeOverlay(
-      dashboard?.recentTransactions ?? [],
-      overlay,
-    ).slice(0, RECENT_LIMIT);
-    return groupTransactions(merged).flatMap(g => g.transactions);
-  }, [dashboard, overlay]);
+  const recentTransactions = useMemo(
+    () =>
+      groupTransactions(dashboard?.recentTransactions ?? []).flatMap(
+        g => g.transactions,
+      ),
+    [dashboard],
+  );
 
-  const totalExpenses = useMemo(() => {
-    const pendingThisMonth = overlay
-      .filter(t => {
-        const d = new Date(t.date);
-        return (
-          t.pending &&
-          t.type === 'expense' &&
-          d.getMonth() === month &&
-          d.getFullYear() === year
-        );
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
-    return (dashboard?.totalExpenses ?? 0) + pendingThisMonth;
-  }, [dashboard, overlay, month, year]);
-
+  const totalExpenses = dashboard?.totalExpenses ?? 0;
   const dailySpending = dashboard?.dailySpending ?? [];
   const budget = dashboard?.budget ?? null;
 
-  const activity = useTransactionStore(s => s.activity);
-  const checklistDismissed = useTransactionStore(s => s.checklistDismissed);
-  const dismissChecklist = useTransactionStore(s => s.dismissChecklist);
+  // This month's data also counts, in case the probe ran before a save
+  const recentTypes = new Set(
+    (dashboard?.recentTransactions ?? []).map(t => t.type),
+  );
+  const activity = activityQuery.data && {
+    expense: activityQuery.data.expense || recentTypes.has('expense'),
+    income: activityQuery.data.income || recentTypes.has('income'),
+  };
+  const checklistDismissed = useAppStore(s => s.checklistDismissed);
+  const dismissChecklist = useAppStore(s => s.dismissChecklist);
 
   const addTransaction = useCallback(
     type => navigation.navigate('AddTransaction', { type }),
@@ -83,7 +77,7 @@ const HomeScreen = ({ navigation }) => {
 
   // Until the user has logged anything, guide them instead of showing a
   // zeroed chart, an empty debt card and an empty activity list.
-  const activityKnown = activity.expense !== null && activity.income !== null;
+  const activityKnown = !!activity;
   const isNewUser =
     activityKnown &&
     !activity.expense &&
@@ -96,14 +90,14 @@ const HomeScreen = ({ navigation }) => {
       key: 'expense',
       title: 'Log your first expense',
       subtitle: 'Coffee, groceries, a ride — anything you paid for today.',
-      done: !!activity.expense,
+      done: !!activity?.expense,
       onPress: () => addTransaction('expense'),
     },
     {
       key: 'income',
       title: 'Record your income',
       subtitle: 'Salary or any money you received this month.',
-      done: !!activity.income,
+      done: !!activity?.income,
       onPress: () => addTransaction('income'),
     },
     {
@@ -129,24 +123,19 @@ const HomeScreen = ({ navigation }) => {
     if (categories.length === 0) fetchCategories();
   }, [categories.length, fetchCategories]);
 
-  // Runs on mount too (first focus), so no separate mount effect is needed
-  useFocusEffect(
-    useCallback(() => {
-      fetchDashboard();
-    }, [fetchDashboard]),
-  );
-
+  const { refetch: refetchDashboard } = dashboardQuery;
+  const { refetch: refetchDebts } = debtQuery;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchAccounts(), fetchDashboard()]);
+    await Promise.all([fetchAccounts(), refetchDashboard(), refetchDebts()]);
     setRefreshing(false);
-  }, [fetchAccounts, fetchDashboard]);
+  }, [fetchAccounts, refetchDashboard, refetchDebts]);
 
   const totalBalance = accounts.reduce((sum, a) => sum + (a.balance ?? 0), 0);
 
   // Show a retry screen instead of silently rendering an all-zero dashboard
   // (only when there is no cached dashboard to fall back on)
-  if (!dashboard && loadError) {
+  if (!dashboard && dashboardQuery.isError) {
     return (
       <View style={styles.safe}>
         <HomeHeader onBellPress={() => navigation.navigate('Notifications')} />
@@ -155,16 +144,14 @@ const HomeScreen = ({ navigation }) => {
             Couldn't load your dashboard
           </Label>
           <Label type="bodySmall" weight="regular" color="textMuted" style={styles.errorSubtitle}>
-            {loadError}
+            {dashboardQuery.error?.message || 'Could not load your dashboard.'}
           </Label>
           <PrimaryButton
             variant="primary"
             size="md"
             label="Try Again"
-            onPress={() => {
-              useTransactionStore.setState({ dashboardError: null });
-              fetchDashboard();
-            }}
+            loading={dashboardQuery.isFetching}
+            onPress={() => refetchDashboard()}
           />
         </View>
       </View>

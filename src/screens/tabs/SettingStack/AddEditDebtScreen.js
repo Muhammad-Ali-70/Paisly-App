@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -17,14 +17,10 @@ import PaymentSourcePicker from '../../../components/addexpense/PaymentSourcePic
 import PaymentSourceModal from '../../../components/modals/PaymentSourceModal';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { hp, wp } from '../../../constants/responsive';
-import {
-  createDebtApi,
-  getDebtByIdApi,
-  updateDebtApi,
-} from '../../../services/debtService';
+import { useDebt, useSaveDebt } from '../../../queries/debts';
 import { useToastService } from '../../../utils/ToastService';
-import { ThemedView } from '../../../components/ui/ThemedView';
-import PrimaryLoader from '../../../components/ui/PrimaryLoader';
+import ThemedView from '../../../components/ui/ThemedView';
+import { SkeletonPulse, SkeletonBox } from '../../../components/common/skeleton/Skeleton';
 
 const AddEditDebtScreen = ({ navigation, route }) => {
   const { debtId } = route.params || {};
@@ -49,47 +45,49 @@ const AddEditDebtScreen = ({ navigation, route }) => {
   const [reminderFrequency, setReminderFrequency] = useState('once');
   const [reminderChannels, setReminderChannels] = useState(['email']);
   const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [loadingDebt, setLoadingDebt] = useState(isEditing);
   const [sourceAccountId, setSourceAccountId] = useState(null);
   const [sourceModalVisible, setSourceModalVisible] = useState(false);
 
+  // Usually already cached by the detail screen, so the form fills instantly
+  const debtQuery = useDebt(isEditing ? debtId : null);
+  const saveDebt = useSaveDebt();
+  const saving = saveDebt.isPending;
+  const loadingDebt = isEditing && debtQuery.isPending;
+
+  // Fill the form once; later background refetches must not overwrite edits
+  const formFilled = useRef(false);
   useEffect(() => {
-    if (isEditing) {
-      const fetchDebt = async () => {
-        try {
-          const data = await getDebtByIdApi(debtId);
-          setDescription(data.description || '');
-          setTotalAmount(data.totalAmount?.toString() || '');
-          setCounterpartyName(data.counterpartyName || '');
-          setCounterpartyEmail(data.counterpartyEmail || '');
-          setStartDate(new Date(data.startDate));
-          setDueDate(new Date(data.dueDate));
-          setDebtType(data.debtType || 'outstanding');
-          setInterestRate(data.interestRate?.toString() || '0');
-          setInterestType(data.interestType || 'none');
-          setInterestFrequency(data.interestFrequency || 'monthly');
-          setCategory(
-            data.category
-              ? data.category.charAt(0).toUpperCase() + data.category.slice(1)
-              : 'Personal',
-          );
-          setReminderDaysBefore(data.reminderDaysBefore?.toString() || '3');
-          setReminderFrequency(data.reminderFrequency || 'once');
-          setReminderChannels(data.reminderChannels || ['email']);
-          setNotes(data.notes || '');
-          setSourceAccountId(data.sourceAccountId?._id || null);
-        } catch (err) {
-          console.error('Failed to fetch debt for editing:', err);
-          Alert.alert('Error', 'Failed to load debt for editing.');
-          navigation.goBack();
-        } finally {
-          setLoadingDebt(false);
-        }
-      };
-      fetchDebt();
-    }
-  }, [isEditing, debtId, navigation]);
+    const data = debtQuery.data;
+    if (!data || formFilled.current) return;
+    formFilled.current = true;
+    setDescription(data.description || '');
+    setTotalAmount(data.totalAmount?.toString() || '');
+    setCounterpartyName(data.counterpartyName || '');
+    setCounterpartyEmail(data.counterpartyEmail || '');
+    setStartDate(new Date(data.startDate));
+    setDueDate(new Date(data.dueDate));
+    setDebtType(data.debtType || 'outstanding');
+    setInterestRate(data.interestRate?.toString() || '0');
+    setInterestType(data.interestType || 'none');
+    setInterestFrequency(data.interestFrequency || 'monthly');
+    setCategory(
+      data.category
+        ? data.category.charAt(0).toUpperCase() + data.category.slice(1)
+        : 'Personal',
+    );
+    setReminderDaysBefore(data.reminderDaysBefore?.toString() || '3');
+    setReminderFrequency(data.reminderFrequency || 'once');
+    setReminderChannels(data.reminderChannels || ['email']);
+    setNotes(data.notes || '');
+    setSourceAccountId(data.sourceAccountId?._id || null);
+  }, [debtQuery.data]);
+
+  useEffect(() => {
+    if (!isEditing || !debtQuery.isError || debtQuery.data) return;
+    console.error('Failed to fetch debt for editing:', debtQuery.error);
+    Alert.alert('Error', 'Failed to load debt for editing.');
+    navigation.goBack();
+  }, [isEditing, debtQuery.isError, debtQuery.data, debtQuery.error, navigation]);
 
   useEffect(() => {
     if (interestType === 'none') {
@@ -126,7 +124,6 @@ const AddEditDebtScreen = ({ navigation, route }) => {
       return;
     }
 
-    setSaving(true);
     try {
       const debtData = {
         debtType,
@@ -147,13 +144,13 @@ const AddEditDebtScreen = ({ navigation, route }) => {
         sourceAccountId,
       };
 
-      if (isEditing) {
-        await updateDebtApi(debtId, debtData);
-        toast.success('Debt updated successfully!');
-      } else {
-        await createDebtApi(debtData);
-        toast.success('Debt created successfully!');
-      }
+      await saveDebt.mutateAsync({
+        id: isEditing ? debtId : undefined,
+        data: debtData,
+      });
+      toast.success(
+        isEditing ? 'Debt updated successfully!' : 'Debt created successfully!',
+      );
       navigation.goBack(); // Navigate back to DebtScreen
     } catch (e) {
       console.error('Save debt failed:', e);
@@ -161,8 +158,6 @@ const AddEditDebtScreen = ({ navigation, route }) => {
         e?.message ??
         `Could not ${isEditing ? 'update' : 'create'} debt. Please try again.`;
       toast.error(message);
-    } finally {
-      setSaving(false);
     }
   }, [
     totalAmount,
@@ -185,6 +180,7 @@ const AddEditDebtScreen = ({ navigation, route }) => {
     navigation,
     toast,
     sourceAccountId,
+    saveDebt,
   ]);
 
   if (loadingDebt) {
@@ -194,9 +190,16 @@ const AddEditDebtScreen = ({ navigation, route }) => {
           title={isEditing ? 'Edit Debt' : 'Add Debt'}
           onBack={() => navigation.goBack()}
         />
-        <View style={styles.loadingWrap}>
-          <PrimaryLoader width={100} height={100} />
-        </View>
+        <SkeletonPulse style={styles.loadingWrap}>
+          {[0, 1, 2, 3].map(i => (
+            <SkeletonBox
+              key={i}
+              width="100%"
+              height={hp(6.5)}
+              radius={12}
+            />
+          ))}
+        </SkeletonPulse>
       </ThemedView>
     );
   }
@@ -304,7 +307,7 @@ const AddEditDebtScreen = ({ navigation, route }) => {
           variant="primary"
           size="lg"
           label={saving ? 'Saving…' : isEditing ? 'Update Debt' : 'Add Debt'}
-          icon={<CheckCircle size={wp(5)} color={theme.onPrimary} />}
+          leftIcon={<CheckCircle size={wp(5)} color={theme.onPrimary} />}
           onPress={handleSave}
           disabled={saving}
         />
@@ -345,9 +348,9 @@ const createStyles = t =>
       backgroundColor: t.background,
     },
     loadingWrap: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
+      paddingHorizontal: wp(5),
+      paddingTop: hp(2),
+      gap: hp(2),
     },
   });
 

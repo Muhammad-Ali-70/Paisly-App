@@ -125,7 +125,7 @@ const ManageAccountsScreen = ({ navigation }) => {
               variant="outline"
               size="md"
               label="Add Account"
-              icon={Plus}
+              leftIcon={<Plus size={wp(4.5)} color={theme.primary} />}
               onPress={() => setAddModalVisible(true)}
             />
           </View>

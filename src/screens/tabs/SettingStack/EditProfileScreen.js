@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Image,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Camera } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import ScreenHeader from '../../../components/common/Screenheader';
@@ -90,7 +90,8 @@ const EditProfileScreen = ({ navigation }) => {
         backIcon="arrow"
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -150,7 +151,7 @@ const EditProfileScreen = ({ navigation }) => {
             disabled={isLoading}
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

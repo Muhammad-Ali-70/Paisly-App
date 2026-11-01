@@ -32,7 +32,8 @@ const PaymentSourcePicker = ({ activeId, onSelect, onSeeAll }) => {
     quickAccounts[quickAccounts.length - 1] = active;
   }
 
-  if (loading) {
+  // Background refreshes keep showing the cached row
+  if (loading && accounts.length === 0) {
     return (
       <View style={styles.section}>
         <ActivityIndicator size="small" color={theme.primary} />

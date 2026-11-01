@@ -31,7 +31,11 @@ import {
 import { createInvestmentApi } from '../../../services/investmentService';
 import { getAccountDebtsApi } from '../../../services/debtService';
 import useAccountStore from '../../../store/useAccountStore';
-import useTransactionStore from '../../../store/useTransactionStore';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useCreateTransaction,
+  invalidateTransactionData,
+} from '../../../queries/transactions';
 import useCategoryStore from '../../../store/useCategoryStore';
 import useAppStore from '../../../store/useAppStore';
 import { useToastService } from '../../../utils/ToastService';
@@ -85,6 +89,21 @@ const AddTransactionScreen = ({ navigation, route }) => {
   const [selectedDebtId, setSelectedDebtId] = useState(null);
 
   const toast = useToastService();
+  const queryClient = useQueryClient();
+  // Error handling lives in the mutation options so it still runs after this
+  // screen has closed (the save is optimistic).
+  const createTransaction = useCreateTransaction({
+    onError: e => {
+      console.error('Save transaction failed:', e);
+      const message =
+        e?.message ?? 'Could not save transaction. Please try again.';
+      if (message === 'Insufficient balance.') {
+        toast.warning('Insufficient balance in this account.');
+      } else {
+        toast.error(`Transaction not saved: ${message}`);
+      }
+    },
+  });
   const theme = useThemeColors();
   const investmentDefaults = useAppStore(s => s.investmentDefaults);
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -243,25 +262,10 @@ const AddTransactionScreen = ({ navigation, route }) => {
 
       // Optimistic: the row shows up in History/Home right away and rolls
       // back with a toast if the server rejects it.
-      useTransactionStore
-        .getState()
-        .createTransaction(payload, {
-          _id,
-          label,
-          type: accountType,
-          color,
-          initials,
-        })
-        .catch(e => {
-          console.error('Save transaction failed:', e);
-          const message =
-            e?.message ?? 'Could not save transaction. Please try again.';
-          if (message === 'Insufficient balance.') {
-            toast.warning('Insufficient balance in this account.');
-          } else {
-            toast.error(`Transaction not saved: ${message}`);
-          }
-        });
+      createTransaction.mutate({
+        payload,
+        account: { _id, label, type: accountType, color, initials },
+      });
 
       navigation?.navigate('TabNavigator', { screen: 'History' });
       return;
@@ -280,8 +284,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
         ...investmentConfig,
       });
 
-      useAccountStore.getState().fetchAccounts();
-      useTransactionStore.getState().invalidate();
+      invalidateTransactionData(queryClient);
       navigation?.navigate('TabNavigator', { screen: 'History' });
     } catch (e) {
       console.error('Save investment failed:', e);
@@ -427,7 +430,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
           label={
             saving ? 'Saving…' : isExpense ? 'Save Expense' : 'Save Income'
           }
-          icon={CheckCircle}
+          leftIcon={<CheckCircle size={wp(5)} color={theme.onPrimary} />}
           onPress={handleSave}
           disabled={saving}
         />

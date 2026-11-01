@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+﻿import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Plus, X } from 'lucide-react-native';
 import ScreenHeader from '../../../components/common/Screenheader';
 import AppTextInput from '../../../components/ui/AppTextInput';
@@ -13,8 +14,11 @@ import {
   getCategoryLabel,
 } from '../../../constants/theme/accountMeta';
 import { useToastService } from '../../../utils/ToastService';
-import { getBudgetTemplatesApi } from '../../../services/budgetService';
-import useBudgetStore from '../../../store/useBudgetStore';
+import {
+  useBudgetTemplates,
+  useCurrentBudget,
+  useSaveBudget,
+} from '../../../queries/budget';
 import useCategoryStore from '../../../store/useCategoryStore';
 import BudgetTemplateModal from '../../../components/modals/budget/BudgetTemplateModal';
 import PaymentIcon from '../../../components/common/Paymenticon';
@@ -65,14 +69,39 @@ const EditBudgetScreen = ({ navigation }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const toast = useToastService();
-  const saveBudget = useBudgetStore(s => s.saveBudget);
+  const { mutateAsync: saveBudget, isPending: saving } = useSaveBudget();
+  const { data: templates = [] } = useBudgetTemplates(50000);
+  // Start from the saved budget so editing doesn't silently wipe it
+  const { data: currentBudget } = useCurrentBudget();
+  const existing = currentBudget?.budget;
 
   const now = useMemo(() => new Date(), []);
-  const [totalLimit, setTotalLimit] = useState('');
-  const [categoryLimits, setCategoryLimits] = useState([]);
+  const [totalLimit, setTotalLimit] = useState(() =>
+    existing?.totalLimit ? String(existing.totalLimit) : '',
+  );
+  const [categoryLimits, setCategoryLimits] = useState(() =>
+    (existing?.categoryLimits ?? []).map(cl => ({
+      category: cl.category,
+      limit: String(cl.limit),
+    })),
+  );
   const [templateModalVisible, setTemplateModalVisible] = useState(false);
-  const [templates, setTemplates] = useState([]);
-  const [saving, setSaving] = useState(false);
+
+  // If the budget arrives after mount (cold cache), prefill once — unless the
+  // user has already started typing.
+  const prefilled = useRef(!!existing);
+  useEffect(() => {
+    if (prefilled.current || !existing) return;
+    prefilled.current = true;
+    if (totalLimit || categoryLimits.length) return;
+    setTotalLimit(String(existing.totalLimit));
+    setCategoryLimits(
+      (existing.categoryLimits ?? []).map(cl => ({
+        category: cl.category,
+        limit: String(cl.limit),
+      })),
+    );
+  }, [existing, totalLimit, categoryLimits.length]);
 
   const customCategories = useCategoryStore(s => s.categories);
 
@@ -98,16 +127,6 @@ const EditBudgetScreen = ({ navigation }) => {
     const used = new Set(categoryLimits.map(cl => cl.category));
     return allExpenseCategories.filter(c => !used.has(c.id));
   }, [allExpenseCategories, categoryLimits]);
-
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const data = await getBudgetTemplatesApi(50000);
-        setTemplates(data);
-      } catch (_) {}
-    };
-    fetchTemplates();
-  }, []);
 
   const addCategoryLimit = useCallback(category => {
     setCategoryLimits(prev => [...prev, { category: category.id, limit: '' }]);
@@ -146,23 +165,19 @@ const EditBudgetScreen = ({ navigation }) => {
       return;
     }
 
-    setSaving(true);
-    const result = await saveBudget({
-      month: now.getMonth(),
-      year: now.getFullYear(),
-      totalLimit: parseFloat(totalLimit),
-      categoryLimits: categoryLimits
-        .filter(cl => cl.limit && parseFloat(cl.limit) > 0)
-        .map(cl => ({ category: cl.category, limit: parseFloat(cl.limit) })),
-    });
-
-    setSaving(false);
-
-    if (result.success) {
+    try {
+      await saveBudget({
+        month: now.getMonth(),
+        year: now.getFullYear(),
+        totalLimit: parseFloat(totalLimit),
+        categoryLimits: categoryLimits
+          .filter(cl => cl.limit && parseFloat(cl.limit) > 0)
+          .map(cl => ({ category: cl.category, limit: parseFloat(cl.limit) })),
+      });
       toast.success('Budget saved successfully');
       navigation.goBack();
-    } else {
-      toast.error(result.message || 'Failed to save budget');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to save budget');
     }
   }, [totalLimit, categoryLimits, now, saveBudget, navigation, toast]);
 
@@ -173,7 +188,8 @@ const EditBudgetScreen = ({ navigation }) => {
         onBack={() => navigation.goBack()}
         backIcon="close"
       />
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -293,7 +309,7 @@ const EditBudgetScreen = ({ navigation }) => {
             disabled={saving}
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <BudgetTemplateModal
         visible={templateModalVisible}

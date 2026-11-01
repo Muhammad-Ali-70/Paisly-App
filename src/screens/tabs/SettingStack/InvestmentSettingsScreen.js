@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import {
   View,
-  ScrollView,
   Switch,
   StyleSheet,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { useNavigation } from '@react-navigation/native';
 import { hp, wp } from '../../../constants/responsive';
@@ -44,7 +44,8 @@ const InvestmentSettingsScreen = () => {
         backIcon="arrow"
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={hp(3)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -146,7 +147,7 @@ const InvestmentSettingsScreen = () => {
             onPress={handleSave}
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

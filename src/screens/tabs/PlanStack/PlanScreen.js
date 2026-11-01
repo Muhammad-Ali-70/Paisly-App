@@ -1,5 +1,11 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
 import { Pencil } from 'lucide-react-native';
 import HomeHeader from '../../../components/home/HomeHeader';
 import TotalSpendingCard from '../../../components/totalspending/TotalSpendingCard';
@@ -8,8 +14,13 @@ import SmartInsightCard from '../../../components/home/SmartInsightCard';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { borderRadius, Label } from '../../../constants/globalstyle';
 import { hp, wp } from '../../../constants/responsive';
-import useBudgetStore from '../../../store/useBudgetStore';
-import PrimaryLoader from '../../../components/ui/PrimaryLoader';
+import { useCurrentBudget } from '../../../queries/budget';
+import { queryKeys } from '../../../queries/keys';
+import { useRefreshOnFocus } from '../../../hooks/useRefreshOnFocus';
+import {
+  SkeletonPulse,
+  SkeletonBox,
+} from '../../../components/common/skeleton/Skeleton';
 import PrimaryButton from '../../../components/ui/PrimaryButton';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -34,11 +45,16 @@ const generateInsight = (spending) => {
 const PlanScreen = ({ navigation }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { currentBudget, loading, error, fetchCurrentBudget } = useBudgetStore();
+  // Cached budget shows instantly; it refetches in the background when stale
+  const { data: currentBudget, isPending, error, refetch } = useCurrentBudget();
+  useRefreshOnFocus(queryKeys.budget);
 
-  useEffect(() => {
-    fetchCurrentBudget();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const now = new Date();
   const monthLabel = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
@@ -55,24 +71,52 @@ const PlanScreen = ({ navigation }) => {
     navigation.navigate('CategoryDetail', { category });
   }, [navigation]);
 
-  if (loading) {
+  if (isPending) {
     return (
-      <View style={[styles.safe, styles.center]}>
-        <PrimaryLoader width={80} height={80} />
-        <Label type="bodySmall" weight="regular" color="textMuted" style={{ marginTop: hp(2) }}>
-          Loading budget...
-        </Label>
+      <View style={styles.safe}>
+        <HomeHeader onBellPress={() => navigation.navigate('Notifications')} />
+        <SkeletonPulse style={styles.skeleton}>
+          <View style={styles.skeletonHeader}>
+            <SkeletonBox width={wp(40)} height={hp(2.6)} />
+            <SkeletonBox width={wp(26)} height={hp(4)} radius={borderRadius.full} />
+          </View>
+          <SkeletonBox width="100%" height={hp(20)} radius={borderRadius.xl} />
+          {[0, 1, 2, 3].map(i => (
+            <SkeletonBox key={i} width="100%" height={hp(8)} radius={borderRadius.lg} />
+          ))}
+        </SkeletonPulse>
       </View>
     );
   }
 
-  if (error || !budget) {
+  // Errors only replace the screen when there is no cached budget to show
+  if (!currentBudget && error) {
     return (
       <View style={styles.safe}>
         <HomeHeader onBellPress={() => navigation.navigate('Notifications')} />
         <View style={styles.emptyContent}>
           <Label type="bodySmall" weight="regular" color="textMuted" style={styles.emptyText}>
-            {error ? error : 'No budget set for current month'}
+            {error.message || 'Could not load your budget.'}
+          </Label>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label="Try Again"
+            onPress={() => refetch()}
+            style={styles.emptyButton}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (!budget) {
+    return (
+      <View style={styles.safe}>
+        <HomeHeader onBellPress={() => navigation.navigate('Notifications')} />
+        <View style={styles.emptyContent}>
+          <Label type="bodySmall" weight="regular" color="textMuted" style={styles.emptyText}>
+            No budget set for current month
           </Label>
           <PrimaryButton
             variant="primary"
@@ -93,6 +137,14 @@ const PlanScreen = ({ navigation }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
       >
         <View style={styles.monthRow}>
           <View>
@@ -158,9 +210,15 @@ const createStyles = t =>
       flex: 1,
       backgroundColor: t.background,
     },
-    center: {
+    skeleton: {
+      paddingHorizontal: wp(5),
+      gap: hp(1.5),
+    },
+    skeletonHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      justifyContent: 'center',
+      marginBottom: hp(0.5),
     },
     scrollContent: {
       paddingBottom: hp(12),

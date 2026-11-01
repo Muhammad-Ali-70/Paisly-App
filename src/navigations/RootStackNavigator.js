@@ -8,7 +8,8 @@ import useAuthStore, {
 } from '../store/useAuthStore';
 import useAccountStore from '../store/useAccountStore';
 import useCategoryStore from '../store/useCategoryStore';
-import useTransactionStore from '../store/useTransactionStore';
+import { queryClient } from '../services/queryClient';
+import { prefetchHomeData } from '../queries/transactions';
 import TabNavigator from './TabNavigator';
 import SplashScreen from '../screens/onboarding/SplashScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
@@ -45,7 +46,6 @@ const RootStackNavigator = ({ pendingAction }) => {
   const hasSeenCarousel = useAuthStore(selectHasSeenCarousel);
   const fetchAccounts = useAccountStore(s => s.fetchAccounts);
   const fetchCategories = useCategoryStore(s => s.fetchCategories);
-  const fetchDashboard = useTransactionStore(s => s.fetchDashboard);
 
   useEffect(() => {
     const splashTimer = setTimeout(() => setShowSplash(false), 1500);
@@ -57,9 +57,9 @@ const RootStackNavigator = ({ pendingAction }) => {
       fetchAccounts();
       fetchCategories();
       // Starts during the splash so Home usually mounts with fresh data
-      fetchDashboard();
+      prefetchHomeData(queryClient);
     }
-  }, [token, isOnboarded, fetchAccounts, fetchCategories, fetchDashboard]);
+  }, [token, isOnboarded, fetchAccounts, fetchCategories]);
 
   if (showSplash) {
     return (

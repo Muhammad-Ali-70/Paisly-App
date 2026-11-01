@@ -3,8 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { storage, mmkvStorage } from '../services/storage';
 import { signupApi, loginApi, getMeApi, verifySignupOtpApi, updateProfileApi, uploadAvatarApi, deleteAccountApi } from '../services/authService';
 import useAccountStore from './useAccountStore';
-import useTransactionStore from './useTransactionStore';
-import useNotificationStore from './useNotificationStore';
+import useAppStore from './useAppStore';
+import { clearQueryCache } from '../services/queryClient';
 
 const withLoading = async (set, fn) => {
   set({ isLoading: true, error: null });
@@ -89,8 +89,8 @@ const useAuthStore = create(
         storage.remove('token');
         // Clear cached user data on logout so it isn't shown on next login
         useAccountStore.getState().clearAccounts();
-        useTransactionStore.getState().clear();
-        useNotificationStore.getState().clearNotifications();
+        clearQueryCache();
+        useAppStore.setState({ checklistDismissed: false });
         set({ user: null, token: null, error: null, pendingAction: null });
       },
 

@@ -1,24 +1,19 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Bell } from 'lucide-react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { Label, shadowPrimary } from '../../constants/globalstyle';
-import useNotificationStore from '../../store/useNotificationStore';
+import { useUnreadCount } from '../../queries/notifications';
+import { useRefreshOnFocus } from '../../hooks/useRefreshOnFocus';
 
 const HomeHeader = ({ avatarSource, onBellPress }) => {
   const theme = useThemeColors();
   const navigation = useNavigation();
-  const unreadCount = useNotificationStore(s => s.unreadCount);
-  const fetchUnreadCount = useNotificationStore(s => s.fetchUnreadCount);
-
-  // Refresh on every focus so the badge doesn't go stale between screens
-  useFocusEffect(
-    useCallback(() => {
-      fetchUnreadCount();
-    }, [fetchUnreadCount]),
-  );
+  const unreadCount = useUnreadCount().data ?? 0;
+  // Refresh on focus so the badge doesn't go stale between screens
+  useRefreshOnFocus(['notifications', 'unread']);
 
   const handleBellPress = () => {
     if (onBellPress) {
