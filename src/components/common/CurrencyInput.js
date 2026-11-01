@@ -44,7 +44,7 @@ const CurrencyInput = ({
       )}
 
       <View style={styles.row}>
-        <Label type="bodySmall" color="black" style={styles.symbol}>
+        <Label type="bodySmall" color="textMain" style={styles.symbol}>
           {currency.symbol}
           {'  '}
         </Label>

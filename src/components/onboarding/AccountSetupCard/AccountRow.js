@@ -46,7 +46,7 @@ const AccountRow = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={styles.removeBtn}
         >
-          <X size={wp(4)} color={theme.black} strokeWidth={2} />
+          <X size={wp(4)} color={theme.textMuted} strokeWidth={2} />
         </TouchableOpacity>
       )}
     </View>

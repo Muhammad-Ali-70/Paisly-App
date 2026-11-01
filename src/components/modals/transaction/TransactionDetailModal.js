@@ -96,7 +96,7 @@ const TransactionDetailModal = ({ visible, transaction, onClose }) => {
                   activeOpacity={0.7}
                   style={styles.closeBtn}
                 >
-                  <X size={wp(4.5)} color={theme.black} strokeWidth={2} />
+                  <X size={wp(4.5)} color={theme.textMuted} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -146,7 +146,7 @@ const TransactionDetailModal = ({ visible, transaction, onClose }) => {
                     <Label
                       type="body"
                       weight="semiBold"
-                      color="black"
+                      color="textMain"
                       style={styles.descLabel}
                     >
                       {description}
