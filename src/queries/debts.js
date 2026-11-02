@@ -46,6 +46,8 @@ export const debtSummaryQuery = {
     return {
       totalOutstanding: data.totalOutstanding || 0,
       totalReceivable: data.totalReceivable || 0,
+      // Due within the week; the home-screen widget surfaces the soonest
+      upcomingDebts: data.upcomingDebts || [],
     };
   },
   meta: { persist: true },

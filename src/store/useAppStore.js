@@ -76,6 +76,11 @@ const useAppStore = create(
       setReminders: patch =>
         set(state => ({ reminders: { ...state.reminders, ...patch } })),
 
+      // ── Payday ──────────────────────────────────────────────────────────────
+      // Day of month money arrives; null means "treat the month's end as payday"
+      paydayDay: null,
+      setPaydayDay: day => set({ paydayDay: day }),
+
       // ── Home getting-started checklist ─────────────────────────────────────
       checklistDismissed: false,
       dismissChecklist: () => set({ checklistDismissed: true }),
@@ -97,6 +102,7 @@ const useAppStore = create(
         theme: state.theme,
         investmentDefaults: state.investmentDefaults,
         reminders: state.reminders,
+        paydayDay: state.paydayDay,
         checklistDismissed: state.checklistDismissed,
       }),
     },

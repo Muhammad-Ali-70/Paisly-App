@@ -21,6 +21,7 @@ import AddTransactionScreen from '../screens/tabs/AddTrasaction/AddTransactionSc
 import BulkAddScreen from '../screens/tabs/AddTrasaction/BulkAddScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ReminderSync from '../components/reminders/ReminderSync';
+import WidgetSync from '../components/widget/WidgetSync';
 import { executePendingAction } from '../utils/deepLinkHandler';
 import { DEV_CONFIG } from '../config/dev';
 
@@ -125,6 +126,7 @@ const RootStackNavigator = ({ pendingAction }) => {
       </Stack.Navigator>
       <PendingActionHandler pendingAction={pendingAction} />
       <ReminderSync />
+      <WidgetSync />
     </>
   );
 };

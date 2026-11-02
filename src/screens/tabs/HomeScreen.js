@@ -18,7 +18,10 @@ import SmartInsightCard from '../../components/home/SmartInsightCard';
 import RecentActivitySection from '../../components/home/RecentActivitySection';
 import GettingStartedCard from '../../components/home/GettingStartedCard';
 import AddExpenseFab from '../../components/home/AddExpenseFab';
+import SafeToSpendCard from '../../components/home/SafeToSpendCard';
 import BillsDueCard from '../../components/home/BillsDueCard';
+import PaydayModal from '../../components/modals/PaydayModal';
+import useSafeToSpend from '../../hooks/useSafeToSpend';
 import { useRecurring } from '../../queries/recurring';
 import { billsDueSoon } from '../../utils/recurring';
 
@@ -63,8 +66,12 @@ const HomeScreen = ({ navigation }) => {
     lastScrollY.current = y;
   }, []);
 
+  const safeToSpend = useSafeToSpend();
   const { data: recurringBills } = useRecurring();
   const dueBills = useMemo(() => billsDueSoon(recurringBills), [recurringBills]);
+  const paydayDay = useAppStore(s => s.paydayDay);
+  const setPaydayDay = useAppStore(s => s.setPaydayDay);
+  const [paydayVisible, setPaydayVisible] = useState(false);
 
   const dashboard = dashboardQuery.data;
   const debtSummary = debtQuery.data ?? {
@@ -225,6 +232,13 @@ const HomeScreen = ({ navigation }) => {
 
             <AccountBreakdownRow accounts={accounts} />
 
+            {!isNewUser && safeToSpend && (
+              <SafeToSpendCard
+                result={safeToSpend}
+                onPress={() => setPaydayVisible(true)}
+              />
+            )}
+
             {!isNewUser && (
               <BillsDueCard
                 bills={dueBills}
@@ -291,6 +305,13 @@ const HomeScreen = ({ navigation }) => {
       <AddExpenseFab
         collapsed={fabCollapsed}
         onPress={() => addTransaction('expense')}
+      />
+
+      <PaydayModal
+        visible={paydayVisible}
+        onClose={() => setPaydayVisible(false)}
+        value={paydayDay}
+        onSelect={setPaydayDay}
       />
     </View>
   );

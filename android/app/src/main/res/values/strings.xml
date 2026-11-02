@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Paisly</string>
+    <string name="widget_safetospendwidget_description" translatable="false">What you can spend today, plus your next bill, debt and notifications</string>
 </resources>

@@ -11,6 +11,7 @@ import { hp, wp } from '../../../constants/responsive';
 import { useNavigation } from '@react-navigation/native';
 import SignOutButton from '../../../components/settings/SignOutButton';
 import DeleteUserModal from '../../../components/settings/DeleteUserModal';
+import PaydayModal, { ordinal } from '../../../components/modals/PaydayModal';
 import { useToastService } from '../../../utils/ToastService';
 import { LINKS } from '../../../constants/links';
 // import ExportModal from '../../../components/modals/export/ExportModal'; // TODO(post-MVP)
@@ -60,6 +61,9 @@ const SettingsScreen = () => {
   // const theme = useAppStore(s => s.theme);
   // const toggleTheme = useAppStore(s => s.toggleTheme);
   const reminders = useAppStore(s => s.reminders);
+  const paydayDay = useAppStore(s => s.paydayDay);
+  const setPaydayDay = useAppStore(s => s.setPaydayDay);
+  const [paydayVisible, setPaydayVisible] = useState(false);
   const logout = useAuthStore(s => s.logout);
   const deleteAccount = useAuthStore(s => s.deleteAccount);
   const toast = useToastService();
@@ -127,6 +131,14 @@ const SettingsScreen = () => {
             title="Recurring Bills"
             subtitle="Rent, utilities, salary and more"
             onPress={() => navigation.navigate('RecurringBills')}
+            showDivider
+          />
+          <SettingsRow
+            iconName="currency"
+            title="Payday"
+            subtitle="Used for your safe-to-spend number"
+            rightLabel={paydayDay ? ordinal(paydayDay) : 'Month end'}
+            onPress={() => setPaydayVisible(true)}
             showDivider
           />
           {/* TODO(post-MVP): re-enable Investments
@@ -305,6 +317,12 @@ const SettingsScreen = () => {
         </Label>
       </ScrollView>
 
+      <PaydayModal
+        visible={paydayVisible}
+        onClose={() => setPaydayVisible(false)}
+        value={paydayDay}
+        onSelect={setPaydayDay}
+      />
       <DeleteUserModal
         visible={deleteVisible}
         loading={deleting}
