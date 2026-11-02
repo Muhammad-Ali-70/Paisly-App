@@ -15,7 +15,8 @@ import { useToastService } from '../../../utils/ToastService';
 import { LINKS } from '../../../constants/links';
 // import ExportModal from '../../../components/modals/export/ExportModal'; // TODO(post-MVP)
 import { useAccounts } from '../../../database/hooks/useAccounts';
-// import useAppStore from '@store/useAppStore'; // TODO(post-MVP): Dark Mode toggle
+import useAppStore from '@store/useAppStore';
+import { formatReminderTime } from './RemindersScreen';
 import useAuthStore, { selectDisplayName } from '../../../store/useAuthStore';
 
 const TYPE_LABEL = {
@@ -58,6 +59,7 @@ const SettingsScreen = () => {
   const { accounts, loading, totalBalance } = useAccounts();
   // const theme = useAppStore(s => s.theme);
   // const toggleTheme = useAppStore(s => s.toggleTheme);
+  const reminders = useAppStore(s => s.reminders);
   const logout = useAuthStore(s => s.logout);
   const deleteAccount = useAuthStore(s => s.deleteAccount);
   const toast = useToastService();
@@ -118,6 +120,13 @@ const SettingsScreen = () => {
             title="Debt Calculator"
             subtitle="Manage your debts and loans"
             onPress={() => navigation.navigate('DebtScreen')}
+            showDivider
+          />
+          <SettingsRow
+            iconName="repeat"
+            title="Recurring Bills"
+            subtitle="Rent, utilities, salary and more"
+            onPress={() => navigation.navigate('RecurringBills')}
             showDivider
           />
           {/* TODO(post-MVP): re-enable Investments
@@ -182,6 +191,24 @@ const SettingsScreen = () => {
           />
         </SettingsSection>
         */}
+
+        {/* ── Reminders ── */}
+        <SettingsSection title="REMINDERS">
+          <SettingsRow
+            iconName="bell"
+            title="Reminders"
+            subtitle={
+              reminders.dailyEnabled
+                ? `Daily at ${formatReminderTime(
+                    reminders.dailyHour,
+                    reminders.dailyMinute,
+                  )}`
+                : 'Daily spending and debt due dates'
+            }
+            onPress={() => navigation.navigate('Reminders')}
+            showDivider={false}
+          />
+        </SettingsSection>
 
         {/* ── Accounts ── */}
         <SettingsSection title="ACCOUNTS">

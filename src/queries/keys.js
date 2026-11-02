@@ -25,5 +25,7 @@ export const queryKeys = {
   debt: id => ['debts', 'detail', id],
   debtTransactions: id => ['debts', 'detail', id, 'transactions'],
 
+  recurring: ['recurring', 'list'],
+
   investmentList: search => ['investments', 'list', search],
 };

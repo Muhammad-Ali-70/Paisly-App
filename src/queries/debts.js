@@ -16,8 +16,28 @@ import {
 } from '../services/debtService';
 import { queryKeys } from './keys';
 import { invalidateTransactionData } from './transactions';
+import useAppStore from '../store/useAppStore';
+import { syncDebtReminders } from '../services/remindersService';
 
 const PAGE_SIZE = 10;
+
+/**
+ * Rebuilds the local due-date reminders from the server's open debts. If the
+ * fetch fails the existing reminders are left as they are.
+ */
+export const refreshDebtReminders = async () => {
+  const { debtEnabled } = useAppStore.getState().reminders;
+  if (!debtEnabled) return syncDebtReminders({ enabled: false });
+  const lists = await Promise.all(
+    ['active', 'partially_paid'].map(status =>
+      getDebtsApi({ status, limit: 50 }),
+    ),
+  );
+  return syncDebtReminders({
+    enabled: true,
+    debts: lists.flatMap(list => list.data),
+  });
+};
 
 export const debtSummaryQuery = {
   queryKey: queryKeys.debtSummary,

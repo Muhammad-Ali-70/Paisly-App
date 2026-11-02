@@ -32,11 +32,13 @@ const CategoryPicker = ({
         <Label type="bodyMedium" weight="semiBold" color="textMain">
           Category
         </Label>
-        <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
-          <Label type="bodySmall" weight="semiBold" color="primary">
-            See All
-          </Label>
-        </TouchableOpacity>
+        {onSeeAll && (
+          <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
+            <Label type="bodySmall" weight="semiBold" color="primary">
+              See All
+            </Label>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView

@@ -10,7 +10,11 @@ import InvestmentSettingsScreen from '../screens/tabs/SettingStack/InvestmentSet
 import TransferScreen from '../screens/tabs/SettingStack/TransferScreen';
 import ManageAccountsScreen from '../screens/tabs/SettingStack/ManageAccountsScreen';
 
-const Stack = createNativeStackNavigator();
+import RemindersScreen from '../screens/tabs/SettingStack/RemindersScreen';
+import RecurringBillsScreen from '../screens/tabs/SettingStack/RecurringBillsScreen';
+import AddEditBillScreen from '../screens/tabs/SettingStack/AddEditBillScreen';
+
+const Stack =createNativeStackNavigator();
 
 const SettingStack = () => {
   return (
@@ -27,6 +31,9 @@ const SettingStack = () => {
       <Stack.Screen name="InvestmentSettingsScreen" component={InvestmentSettingsScreen} />
       <Stack.Screen name="TransferScreen" component={TransferScreen} />
       <Stack.Screen name="ManageAccounts" component={ManageAccountsScreen} />
+      <Stack.Screen name="Reminders" component={RemindersScreen} />
+      <Stack.Screen name="RecurringBills" component={RecurringBillsScreen} />
+      <Stack.Screen name="AddEditBill" component={AddEditBillScreen} />
     </Stack.Navigator>
   );
 };

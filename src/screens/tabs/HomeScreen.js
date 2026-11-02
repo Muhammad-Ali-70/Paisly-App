@@ -18,6 +18,9 @@ import SmartInsightCard from '../../components/home/SmartInsightCard';
 import RecentActivitySection from '../../components/home/RecentActivitySection';
 import GettingStartedCard from '../../components/home/GettingStartedCard';
 import AddExpenseFab from '../../components/home/AddExpenseFab';
+import BillsDueCard from '../../components/home/BillsDueCard';
+import { useRecurring } from '../../queries/recurring';
+import { billsDueSoon } from '../../utils/recurring';
 
 import useAccountStore from '../../store/useAccountStore';
 import useCategoryStore from '../../store/useCategoryStore';
@@ -60,6 +63,9 @@ const HomeScreen = ({ navigation }) => {
     lastScrollY.current = y;
   }, []);
 
+  const { data: recurringBills } = useRecurring();
+  const dueBills = useMemo(() => billsDueSoon(recurringBills), [recurringBills]);
+
   const dashboard = dashboardQuery.data;
   const debtSummary = debtQuery.data ?? {
     totalOutstanding: 0,
@@ -86,6 +92,9 @@ const HomeScreen = ({ navigation }) => {
     expense: activityQuery.data.expense || recentTypes.has('expense'),
     income: activityQuery.data.income || recentTypes.has('income'),
   };
+  const reminders = useAppStore(s => s.reminders);
+  const remindersOn =
+    reminders.dailyEnabled || reminders.debtEnabled || reminders.billEnabled;
   const checklistDismissed = useAppStore(s => s.checklistDismissed);
   const dismissChecklist = useAppStore(s => s.dismissChecklist);
 
@@ -118,6 +127,15 @@ const HomeScreen = ({ navigation }) => {
       subtitle: 'Salary or any money you received this month.',
       done: !!activity?.income,
       onPress: () => addTransaction('income'),
+    },
+    {
+      key: 'reminders',
+      title: 'Set up reminders',
+      subtitle: 'A nudge to log spending, and alerts before bills and debts are due.',
+      done: remindersOn,
+      // initial: false keeps Settings beneath Reminders so back works
+      onPress: () =>
+        navigation.navigate('User', { screen: 'Reminders', initial: false }),
     },
     {
       key: 'budget',
@@ -206,6 +224,25 @@ const HomeScreen = ({ navigation }) => {
             />
 
             <AccountBreakdownRow accounts={accounts} />
+
+            {!isNewUser && (
+              <BillsDueCard
+                bills={dueBills}
+                onSeeAll={() =>
+                  navigation.navigate('User', {
+                    screen: 'RecurringBills',
+                    initial: false,
+                  })
+                }
+                onOpenBill={bill =>
+                  navigation.navigate('User', {
+                    screen: 'AddEditBill',
+                    params: { billId: bill._id },
+                    initial: false,
+                  })
+                }
+              />
+            )}
 
             {showChecklist && (
               <GettingStartedCard

@@ -5,6 +5,7 @@ import { signupApi, loginApi, getMeApi, verifySignupOtpApi, updateProfileApi, up
 import useAccountStore from './useAccountStore';
 import useAppStore from './useAppStore';
 import { clearQueryCache } from '../services/queryClient';
+import { cancelAllReminders } from '../services/remindersService';
 
 const withLoading = async (set, fn) => {
   set({ isLoading: true, error: null });
@@ -93,6 +94,7 @@ const useAuthStore = create(
         // Clear cached user data on logout so it isn't shown on next login
         useAccountStore.getState().clearAccounts();
         clearQueryCache();
+        cancelAllReminders().catch(() => {});
         useAppStore.setState({ checklistDismissed: false });
         set({ user: null, token: null, error: null, pendingAction: null });
       },

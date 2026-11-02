@@ -63,6 +63,19 @@ const useAppStore = create(
           investmentDefaults: { ...state.investmentDefaults, ...defaults },
         })),
 
+      // ── Local reminders ─────────────────────────────────────────────────────
+      // lastLoggedDay lets the daily reminder skip a day the user already logged
+      reminders: {
+        dailyEnabled: false,
+        dailyHour: 20,
+        dailyMinute: 0,
+        debtEnabled: false,
+        billEnabled: false,
+        lastLoggedDay: null,
+      },
+      setReminders: patch =>
+        set(state => ({ reminders: { ...state.reminders, ...patch } })),
+
       // ── Home getting-started checklist ─────────────────────────────────────
       checklistDismissed: false,
       dismissChecklist: () => set({ checklistDismissed: true }),
@@ -83,6 +96,7 @@ const useAppStore = create(
         currency: state.currency,
         theme: state.theme,
         investmentDefaults: state.investmentDefaults,
+        reminders: state.reminders,
         checklistDismissed: state.checklistDismissed,
       }),
     },

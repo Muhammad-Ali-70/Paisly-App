@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Calculator,
   ArrowLeftRight,
+  Repeat,
 } from 'lucide-react-native';
 import { Label, borderRadius } from '../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
@@ -33,6 +34,7 @@ const ICONS = {
   trendingup: TrendingUp,
   calculator: Calculator,
   transfer: ArrowLeftRight,
+  repeat: Repeat,
 };
 
 const LIGHT_ICON_THEMES = {
@@ -48,6 +50,7 @@ const LIGHT_ICON_THEMES = {
   trendingup: { bg: '#e2e8f8' },
   calculator: { bg: '#FFF3E6' },
   transfer: { bg: '#EFF6FF' },
+  repeat: { bg: '#F5F3FF' },
 };
 
 const DARK_ICON_THEMES = {
@@ -63,6 +66,7 @@ const DARK_ICON_THEMES = {
   trendingup: { bg: '#0B3D2E' },
   calculator: { bg: '#3D2E0B' },
   transfer: { bg: '#1E3A5F' },
+  repeat: { bg: '#2E1E5E' },
 };
 
 const SettingsRow = ({

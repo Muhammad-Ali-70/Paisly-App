@@ -38,6 +38,18 @@ export const executeShortcutNavigation = (actionType, navigation) => {
           navigation.navigate('AddTransaction', { type: 'income' });
         }
         break;
+      case 'VIEW_BILLS':
+        navigation.navigate('TabNavigator', {
+          screen: 'User',
+          params: { screen: 'RecurringBills' },
+        });
+        break;
+      case 'VIEW_DEBTS':
+        navigation.navigate('TabNavigator', {
+          screen: 'User',
+          params: { screen: 'DebtScreen' },
+        });
+        break;
       case 'VIEW_HISTORY':
         if (navigation.navigate) {
           navigation.navigate('TabNavigator', {

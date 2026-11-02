@@ -12,6 +12,8 @@ import {
   getTransactionsApi,
 } from '../services/transactionService';
 import useAccountStore from '../store/useAccountStore';
+import useAppStore from '../store/useAppStore';
+import { dayKey } from '../services/remindersService';
 import { queryKeys } from './keys';
 
 const PAGE_SIZE = 20;
@@ -115,6 +117,10 @@ export const invalidateTransactionData = queryClient => {
   useAccountStore.getState().fetchAccounts();
 };
 
+/** The daily reminder skips a day the user already logged something. */
+export const markLoggedToday = () =>
+  useAppStore.getState().setReminders({ lastLoggedDay: dayKey() });
+
 // ─── Optimistic create ──────────────────────────────────────────────────────
 
 const adjustBalance = (accountId, delta) =>
@@ -193,6 +199,7 @@ export const createTransactionMutation = (queryClient, { onError } = {}) => ({
   },
 
   onSuccess: (saved, { payload }, ctx) => {
+    markLoggedToday();
     // Swap the temp row for the server copy until the refetch lands
     queryClient
       .getQueriesData({ queryKey: queryKeys.transactionLists })
@@ -260,6 +267,7 @@ export const createBulkTransactionsMutation = queryClient => ({
   mutationFn: createBulkTransactionsApi,
   onSuccess: (data, { accountId }) => {
     const saved = data.transactions ?? [];
+    if (saved.length) markLoggedToday();
     insertSavedTransactions(queryClient, saved);
 
     const net = saved.reduce(

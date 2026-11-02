@@ -20,6 +20,7 @@ import AuthStack from './AuthStack';
 import AddTransactionScreen from '../screens/tabs/AddTrasaction/AddTransactionScreen';
 import BulkAddScreen from '../screens/tabs/AddTrasaction/BulkAddScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ReminderSync from '../components/reminders/ReminderSync';
 import { executePendingAction } from '../utils/deepLinkHandler';
 import { DEV_CONFIG } from '../config/dev';
 
@@ -123,6 +124,7 @@ const RootStackNavigator = ({ pendingAction }) => {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
       </Stack.Navigator>
       <PendingActionHandler pendingAction={pendingAction} />
+      <ReminderSync />
     </>
   );
 };
