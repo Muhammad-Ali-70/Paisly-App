@@ -13,6 +13,8 @@ import { useThemeColors } from '@hooks/useThemeColors';
 
 const SIZE = wp(14);
 const EXPANDED_WIDTH = wp(38);
+// Resolved here because wp() is a JS-thread function and can't run inside a worklet
+const LABEL_SHIFT = wp(2);
 const TIMING = { duration: 220, easing: Easing.out(Easing.cubic) };
 
 /**
@@ -34,7 +36,7 @@ const AddExpenseFab = ({ onPress, collapsed = false }) => {
   }));
   const labelStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ translateX: (1 - progress.value) * -wp(2) }],
+    transform: [{ translateX: (1 - progress.value) * -LABEL_SHIFT }],
   }));
 
   return (
