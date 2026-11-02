@@ -11,6 +11,7 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-native-community/datetimepicker": "^9.1.0",
     "@react-navigation/bottom-tabs": "^7.16.1",
@@ -27,6 +28,7 @@
     "posthog-react-native": "^4.46.19",
     "react": "19.2.3",
     "react-native": "0.85.3",
+    "react-native-android-widget": "^0.26.0",
     "react-native-device-info": "^15.0.2",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^3.1.0",
