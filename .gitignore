@@ -87,3 +87,6 @@ yarn-error.log
 .opencode/
 AGENTS.md
 graphify-out/
+
+# Local build output
+android/build-release.log
