@@ -1,6 +1,9 @@
 /* eslint-env jest */
 // Native-module mocks for rendering the app under Jest.
 require('react-native-gesture-handler/jestSetup');
+// Path import: the package's `exports` map doesn't expose its shipped Jest mock
+require('./node_modules/@react-native-google-signin/google-signin/jest/build/jest/setup');
+jest.mock('@notifee/react-native', () => require('@notifee/react-native/jest-mock'));
 
 jest.mock('react-native-worklets', () =>
   require('react-native-worklets/lib/module/mock'),

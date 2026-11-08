@@ -14,6 +14,12 @@ export const loginApi = async ({ email, password }) => {
   return response.data;
 };
 
+// Returns { token, user, isNewUser }
+export const googleAuthApi = async ({ idToken }) => {
+  const response = await apiClient.post('/auth/google', { idToken });
+  return response.data;
+};
+
 export const getMeApi = async () => {
   const response = await apiClient.get('/auth/me');
   return response.data;
@@ -74,8 +80,11 @@ export const uploadAvatarApi = async (imageUri) => {
   return response.data;
 };
 
-export const deleteAccountApi = async ({ password }) => {
-  const response = await apiClient.delete('/users/me', { data: { password } });
+// Pass `password`, or `idToken` from a fresh Google sign-in for Google-only accounts.
+export const deleteAccountApi = async ({ password, idToken }) => {
+  const response = await apiClient.delete('/users/me', {
+    data: { password, idToken },
+  });
   return response.data;
 };
 

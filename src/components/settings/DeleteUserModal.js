@@ -14,7 +14,8 @@ import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 
 // Deletes the user's Paisly account (not a money account — see accounts/DeleteAccountModal).
-const DeleteUserModal = ({ visible, loading, error, onConfirm, onCancel }) => {
+// `usesGoogle`: account has no password, so confirmation goes through the Google picker.
+const DeleteUserModal = ({ visible, loading, error, usesGoogle, onConfirm, onCancel }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [password, setPassword] = useState('');
@@ -52,18 +53,31 @@ const DeleteUserModal = ({ visible, loading, error, onConfirm, onCancel }) => {
                 categories. This cannot be undone.
               </Label>
 
-              <AppTextInput
-                label="Enter your password to confirm"
-                placeholder="••••••••"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                error={error}
-                leftIconName="lock"
-                rightIconName={showPassword ? 'eye' : 'eye-off'}
-                onRightIconPress={() => setShowPassword(v => !v)}
-                containerStyle={styles.input}
-              />
+              {usesGoogle ? (
+                <View style={styles.input}>
+                  <Label type="bodySmall" weight="semiBold" color="textMain" style={styles.googleHint}>
+                    You'll be asked to choose your Google account to confirm.
+                  </Label>
+                  {!!error && (
+                    <Label type="bodyXs" weight="regular" color="error" style={styles.googleHint}>
+                      {error}
+                    </Label>
+                  )}
+                </View>
+              ) : (
+                <AppTextInput
+                  label="Enter your password to confirm"
+                  placeholder="••••••••"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  error={error}
+                  leftIconName="lock"
+                  rightIconName={showPassword ? 'eye' : 'eye-off'}
+                  onRightIconPress={() => setShowPassword(v => !v)}
+                  containerStyle={styles.input}
+                />
+              )}
 
               <View style={styles.actions}>
                 <PrimaryButton
@@ -80,7 +94,7 @@ const DeleteUserModal = ({ visible, loading, error, onConfirm, onCancel }) => {
                   label="Delete"
                   onPress={() => onConfirm(password)}
                   loading={loading}
-                  disabled={!password}
+                  disabled={!usesGoogle && !password}
                   style={styles.button}
                 />
               </View>
@@ -126,6 +140,9 @@ const createStyles = t => StyleSheet.create({
   input: {
     width: '100%',
     marginBottom: hp(2),
+  },
+  googleHint: {
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',

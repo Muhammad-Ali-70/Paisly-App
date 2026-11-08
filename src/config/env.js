@@ -7,6 +7,7 @@ import {
   BASE_URL_ANDROID_EMULATOR,
   BASE_URL_PROD_ONRENDER,
   BASE_URL_PROD_RAILWAY,
+  GOOGLE_WEB_CLIENT_ID,
 } from '@env';
 
 const getBaseURL = () => {
@@ -27,6 +28,7 @@ export const ENV = {
   POSTHOG_KEY,
   POSTHOG_HOST: POSTHOG_HOST ?? 'https://us.i.posthog.com',
   BASE_URL: getBaseURL(),
+  GOOGLE_WEB_CLIENT_ID,
   // Anything not explicitly a production APP_ENV counts as dev
   IS_DEV: !String(APP_ENV ?? '').startsWith('production'),
 };

@@ -4,8 +4,9 @@ import { Pencil } from 'lucide-react-native';
 import { Label, borderRadius } from '../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { hp, wp } from '../../constants/responsive';
+import GoogleImage from '../../assets/images/static/logos/google.png';
 
-const SettingsProfileCard = ({ name, email, isPremium, avatarSource, avatarUrl, onEditPress }) => {
+const SettingsProfileCard = ({ name, email, isPremium, isGoogleLinked, avatarSource, avatarUrl, onEditPress }) => {
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -37,6 +38,15 @@ const SettingsProfileCard = ({ name, email, isPremium, avatarSource, avatarUrl, 
       <Label type="bodySmall" weight="regular" color="textMuted" style={styles.email}>
         {email}
       </Label>
+
+      {isGoogleLinked && (
+        <View style={styles.googleTag}>
+          <Image source={GoogleImage} style={styles.googleLogo} resizeMode="contain" />
+          <Label type="bodyXs" weight="semiBold" color="textMuted">
+            Signed in with Google
+          </Label>
+        </View>
+      )}
 
       {isPremium && (
         <View style={styles.badge}>
@@ -101,6 +111,22 @@ const createStyles = (t) =>
     },
     badgeText: {
       letterSpacing: 0.6,
+    },
+    googleTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: wp(1.5),
+      borderWidth: 1,
+      borderColor: t.outlineVariant,
+      borderRadius: borderRadius.full,
+      paddingHorizontal: wp(3),
+      paddingVertical: hp(0.5),
+      backgroundColor: t.surfaceContainerLow,
+      marginBottom: hp(1),
+    },
+    googleLogo: {
+      width: wp(3.5),
+      height: wp(3.5),
     },
   });
 

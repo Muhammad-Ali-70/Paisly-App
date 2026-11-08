@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { storage, mmkvStorage } from '../services/storage';
-import { signupApi, loginApi, getMeApi, verifySignupOtpApi, updateProfileApi, uploadAvatarApi, deleteAccountApi } from '../services/authService';
+import { signupApi, loginApi, googleAuthApi, getMeApi, verifySignupOtpApi, updateProfileApi, uploadAvatarApi, deleteAccountApi } from '../services/authService';
+import { getGoogleIdToken, signOutGoogle, revokeGoogle } from '../services/googleAuth';
 import useAccountStore from './useAccountStore';
 import useAppStore from './useAppStore';
 import { clearQueryCache } from '../services/queryClient';
@@ -61,6 +62,25 @@ const useAuthStore = create(
           return { success: true };
         }),
 
+      // Sign in or sign up with Google. Doesn't touch the shared isLoading flag, so the
+      // email form's button doesn't spin; the Google button tracks its own loading state.
+      // Resolves { success } | { cancelled } | { success: false, message }.
+      googleLogin: async () => {
+        try {
+          const { idToken, cancelled } = await getGoogleIdToken();
+          if (cancelled) return { cancelled: true };
+
+          const { token, user, isNewUser } = await googleAuthApi({ idToken });
+          storage.set('token', token);
+          set({ token, user, rememberMe: true, hasAccount: true, error: null });
+          // Existing users already have accounts on the server; new ones go to onboarding.
+          if (!isNewUser) await useAccountStore.getState().fetchAccounts();
+          return { success: true, isNewUser };
+        } catch (err) {
+          return { success: false, message: err.message };
+        }
+      },
+
       // Call this after seedAccounts/createAccount succeeds on the onboarding screen
       // so the navigator re-renders without needing another /me fetch
       setOnboarded: (value = true) =>
@@ -71,7 +91,8 @@ const useAuthStore = create(
       updateProfile: ({ name, phoneNumber }) =>
         withLoading(set, async () => {
           const user = await updateProfileApi({ name, phoneNumber });
-          set({ user });
+          // Merge: the profile endpoint omits computed fields like isGoogleLinked/hasPassword
+          set(state => ({ user: { ...state.user, ...user } }));
           return { success: true };
         }),
 
@@ -92,6 +113,7 @@ const useAuthStore = create(
 
       logout: () => {
         storage.remove('token');
+        signOutGoogle();
         // Clear cached user data on logout so it isn't shown on next login
         useAccountStore.getState().clearAccounts();
         clearQueryCache();
@@ -102,12 +124,27 @@ const useAuthStore = create(
       },
 
       // Server wipes all user data; locally it's just a logout since nothing else is cached.
-      deleteAccount: ({ password }) =>
-        withLoading(set, async () => {
-          await deleteAccountApi({ password });
+      // Password accounts pass `password`. Google-only accounts (hasPassword === false)
+      // re-confirm through the Google picker instead.
+      deleteAccount: async ({ password } = {}) => {
+        const usesGoogle = get().user?.hasPassword === false;
+        let idToken;
+        if (usesGoogle) {
+          try {
+            const result = await getGoogleIdToken();
+            if (result.cancelled) return { cancelled: true };
+            idToken = result.idToken;
+          } catch (err) {
+            return { success: false, message: err.message };
+          }
+        }
+        return withLoading(set, async () => {
+          await deleteAccountApi(usesGoogle ? { idToken } : { password });
+          if (get().user?.isGoogleLinked) await revokeGoogle();
           get().logout();
           return { success: true };
-        }),
+        });
+      },
 
       setPendingAction: action => set({ pendingAction: action }),
       
@@ -150,6 +187,7 @@ export const selectIsOnboarded = state => !!state.user?.isOnboarded;
 export const selectAuthLoading = state => state.isLoading;
 export const selectAuthError = state => state.error;
 export const selectDisplayName = state => state.user?.name || state.user?.email?.split('@')[0] || 'User';
+export const selectIsGoogleLinked = state => !!state.user?.isGoogleLinked;
 export const selectPendingAction = state => state.pendingAction;
 export const selectHasSeenCarousel = state => !!state.hasSeenCarousel;
 
