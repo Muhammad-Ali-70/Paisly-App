@@ -12,6 +12,7 @@ import {
   getDebtsApi,
   getDebtSummaryApi,
   getDebtTransactionsApi,
+  recordPaymentApi,
   updateDebtApi,
 } from '../services/debtService';
 import { queryKeys } from './keys';
@@ -48,6 +49,8 @@ export const debtSummaryQuery = {
       totalReceivable: data.totalReceivable || 0,
       // Due within the week; the home-screen widget surfaces the soonest
       upcomingDebts: data.upcomingDebts || [],
+      // Every open debt the user owes; safe-to-spend sets aside those due before payday
+      payableDebts: data.payableDebts || [],
     };
   },
   meta: { persist: true },
@@ -105,16 +108,35 @@ export const useSaveDebt = () => {
   });
 };
 
+/**
+ * Record a repayment (paid or received). The server creates the linked
+ * transaction, moves the account balance and settles the debt once nothing
+ * remains, so debts, transaction data, balances and reminders all refresh.
+ */
+export const useRecordDebtPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payment }) => recordPaymentApi(id, payment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+      invalidateTransactionData(queryClient);
+      refreshDebtReminders().catch(() => {});
+    },
+  });
+};
+
 export const useDeleteDebt = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: id => deleteDebtApi(id),
     onSuccess: () => {
-      // Soft delete on the server; no balances or transactions change. The
-      // detail query is left alone: its screen is still mounted until it
-      // navigates back, and refetching a deleted debt would 404.
+      // The server reverses the debt's transactions and balances, so those
+      // refresh too. The detail query is left alone: its screen is still
+      // mounted until it navigates back, and refetching a deleted debt 404s.
       queryClient.invalidateQueries({ queryKey: ['debts', 'list'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.debtSummary });
+      invalidateTransactionData(queryClient);
+      refreshDebtReminders().catch(() => {});
     },
   });
 };
