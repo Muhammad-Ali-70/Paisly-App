@@ -51,11 +51,9 @@
 
 -keep class io.sentry.react.** { *; }
 
--keep class com.nozbe.watermelondb.** { *; }
 
 -keep class com.margelo.nitro.** { *; }
 
--keep class com.bumptech.glide.** { *; }
 -keep class com.airbnb.lottie.** { *; }
 
 -keepattributes Signature
