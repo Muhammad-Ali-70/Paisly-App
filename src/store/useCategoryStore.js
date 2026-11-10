@@ -15,6 +15,12 @@ const useCategoryStore = create((set, get) => ({
   loading: false,
   error: null,
 
+  /** Logout: the next user must not see these in pickers or History. */
+  clearCategories: () => {
+    registerCustomCategories([]);
+    set({ categories: [], loading: false, error: null });
+  },
+
   fetchCategories: async () => {
     set({ loading: true, error: null });
     try {

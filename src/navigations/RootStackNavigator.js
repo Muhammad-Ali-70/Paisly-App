@@ -72,6 +72,12 @@ const RootStackNavigator = ({ pendingAction }) => {
     return () => clearTimeout(splashTimer);
   }, []);
 
+  // Once per session: the cached profile may be stale (changed on another device)
+  const refreshMe = useAuthStore(s => s.refreshMe);
+  useEffect(() => {
+    if (token) refreshMe();
+  }, [token, refreshMe]);
+
   useEffect(() => {
     if (token && isOnboarded) {
       fetchAccounts();

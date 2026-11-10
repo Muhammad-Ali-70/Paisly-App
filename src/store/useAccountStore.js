@@ -3,6 +3,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 import { mmkvStorage } from '../services/storage';
 
+// Bumped by clearAccounts (logout) so in-flight fetches can tell they're stale
+let sessionGeneration = 0;
+
 // Accounts are persisted so balances show instantly on cold start; screens
 // still refetch in the background.
 const useAccountStore = create(
@@ -13,11 +16,16 @@ const useAccountStore = create(
       error: null,
 
       fetchAccounts: async () => {
+        // A fetch that started before logout must not write the old user's
+        // accounts back into the (persisted) cache when it resolves
+        const generation = sessionGeneration;
         set({ loading: true, error: null });
         try {
           const response = await apiClient.get('/accounts');
+          if (generation !== sessionGeneration) return;
           set({ accounts: response.data, loading: false });
         } catch (err) {
+          if (generation !== sessionGeneration) return;
           set({ error: err.message, loading: false });
         }
       },
@@ -52,7 +60,10 @@ const useAccountStore = create(
         }
       },
 
-      clearAccounts: () => set({ accounts: [], loading: false, error: null }),
+      clearAccounts: () => {
+        sessionGeneration += 1;
+        set({ accounts: [], loading: false, error: null });
+      },
     }),
     {
       name: 'account-cache',

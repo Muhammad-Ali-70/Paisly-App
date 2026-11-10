@@ -5,6 +5,7 @@ import { signupApi, loginApi, googleAuthApi, getMeApi, verifySignupOtpApi, updat
 import { getGoogleIdToken, signOutGoogle, revokeGoogle } from '../services/googleAuth';
 import useAccountStore from './useAccountStore';
 import useAppStore from './useAppStore';
+import useCategoryStore from './useCategoryStore';
 import { clearQueryCache } from '../services/queryClient';
 import { cancelAllReminders } from '../services/remindersService';
 import { clearWidget } from '../widget/widgetSnapshot';
@@ -19,6 +20,24 @@ const withLoading = async (set, fn) => {
     set({ error: err.message, isLoading: false });
     return { success: false, message: err.message };
   }
+};
+
+// Wipes everything cached for the signed-in user: server data, accounts, the
+// home-screen widget and scheduled reminders. Used on logout, and on a cold
+// start with no session (a "Remember me" off login leaves no token behind, so
+// its cached data must not outlive the app process).
+const clearLocalUserData = ({ deferNative = false } = {}) => {
+  // Legacy: older builds kept a second copy of the token under this key
+  storage.remove('token');
+  useAccountStore.getState().clearAccounts();
+  clearQueryCache();
+  const clearNative = () => {
+    cancelAllReminders().catch(() => {});
+    clearWidget();
+  };
+  // At module init (store hydration) native modules may not be ready yet
+  if (deferNative) setTimeout(clearNative, 0);
+  else clearNative();
 };
 
 const useAuthStore = create(
@@ -47,8 +66,7 @@ const useAuthStore = create(
       verifySignupOtp: ({ email, otp }) =>
         withLoading(set, async () => {
           const { token, user } = await verifySignupOtpApi({ email, otp });
-          storage.set('token', token);
-          set({ token, user, hasAccount: true });
+          set({ token, user, rememberMe: true, hasAccount: true });
           return { success: true };
         }),
 
@@ -56,7 +74,7 @@ const useAuthStore = create(
       login: ({ email, password, rememberMe = true }) =>
         withLoading(set, async () => {
           const { token, user } = await loginApi({ email, password });
-          storage.set('token', token);
+          // Persisted by partialize only when rememberMe is on
           set({ token, user, rememberMe, hasAccount: true });
           await useAccountStore.getState().fetchAccounts();
           return { success: true };
@@ -71,7 +89,6 @@ const useAuthStore = create(
           if (cancelled) return { cancelled: true };
 
           const { token, user, isNewUser } = await googleAuthApi({ idToken });
-          storage.set('token', token);
           set({ token, user, rememberMe: true, hasAccount: true, error: null });
           // Existing users already have accounts on the server; new ones go to onboarding.
           if (!isNewUser) await useAccountStore.getState().fetchAccounts();
@@ -111,15 +128,25 @@ const useAuthStore = create(
           set({ user });
         }),
 
+      // Quiet profile refresh on launch: keeps isOnboarded/hasPassword/isGoogleLinked
+      // current (they decide navigation and the delete-account flow). Doesn't touch
+      // isLoading/error, and a 401 here logs out through the API client as usual.
+      refreshMe: async () => {
+        try {
+          const user = await getMeApi();
+          if (get().token) set({ user });
+        } catch {
+          // Offline or server asleep: keep the cached profile
+        }
+      },
+
       logout: () => {
-        storage.remove('token');
         signOutGoogle();
         // Clear cached user data on logout so it isn't shown on next login
-        useAccountStore.getState().clearAccounts();
-        clearQueryCache();
-        cancelAllReminders().catch(() => {});
-        clearWidget();
-        useAppStore.setState({ checklistDismissed: false });
+        clearLocalUserData();
+        // Per-user settings (payday, reminders, defaults) and custom categories
+        useAppStore.getState().resetUserData();
+        useCategoryStore.getState().clearCategories();
         set({ user: null, token: null, error: null, pendingAction: null });
       },
 
@@ -163,6 +190,11 @@ const useAuthStore = create(
         hasAccount: persisted?.hasAccount ?? !!persisted?.token,
       }),
       storage: createJSONStorage(() => mmkvStorage),
+      // No persisted session means the last user either logged out or chose
+      // "Remember me" off: drop whatever they left cached on the device.
+      onRehydrateStorage: () => state => {
+        if (!state?.token) clearLocalUserData({ deferNative: true });
+      },
       partialize: state => {
         const partial = { 
           rememberMe: state.rememberMe,
