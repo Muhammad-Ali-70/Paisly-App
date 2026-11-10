@@ -18,6 +18,8 @@ const daysUntilDate = (date, now = new Date()) => {
 };
 
 const spendPage = result => {
+  // No payday chosen yet, so there's no honest figure to show
+  if (!result) return null;
   const days = `${result.daysLeft} day${result.daysLeft === 1 ? "" : "s"} to payday`;
   // The amount stays a short figure; what it means goes in the label
   if (result.shortfall > 0) {

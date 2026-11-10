@@ -232,7 +232,8 @@ const HomeScreen = ({ navigation }) => {
 
             <AccountBreakdownRow accounts={accounts} />
 
-            {!isNewUser && safeToSpend && (
+            {/* With no payday yet, `safeToSpend` is null and the card asks for one */}
+            {!isNewUser && dashboard && (
               <SafeToSpendCard
                 result={safeToSpend}
                 onPress={() => setPaydayVisible(true)}

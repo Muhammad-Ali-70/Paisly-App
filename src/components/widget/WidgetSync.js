@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import useSafeToSpend from '../../hooks/useSafeToSpend';
 import { useRecurring } from '../../queries/recurring';
+import { useDashboard } from '../../queries/transactions';
 import { useDebtSummary } from '../../queries/debts';
 import { useUnreadCount } from '../../queries/notifications';
 import { buildWidgetPages } from '../../widget/widgetPages';
@@ -13,17 +14,21 @@ import { publishToWidget } from '../../widget/widgetSnapshot';
  */
 const WidgetSync = () => {
   const result = useSafeToSpend();
+  const { data: dashboard } = useDashboard();
   const { data: bills } = useRecurring();
   const { data: debtSummary } = useDebtSummary();
   const { data: unread } = useUnreadCount();
   const upcomingDebts = debtSummary?.upcomingDebts;
 
   useEffect(() => {
-    if (!result) return;
+    // Wait for the dashboard so a cold start doesn't briefly publish pages
+    // without the spending figure. `result` stays null while no payday is
+    // set; the bill, debt and notification pages still go out.
+    if (!dashboard) return;
     publishToWidget(
       buildWidgetPages({ result, bills, debts: upcomingDebts, unread }),
     );
-  }, [result, bills, upcomingDebts, unread]);
+  }, [dashboard, result, bills, upcomingDebts, unread]);
 
   return null;
 };
