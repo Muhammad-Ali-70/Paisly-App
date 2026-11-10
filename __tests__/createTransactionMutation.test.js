@@ -90,6 +90,44 @@ test('inserts a pending row and moves the balance before the server answers', as
   });
 });
 
+test('a History refetch that lands before the server saves keeps the new row', async () => {
+  const {
+    transactionListQuery,
+  } = require('../src/queries/transactions');
+  const { InfiniteQueryObserver } = require('@tanstack/react-query');
+  const { getTransactionsApi } = require('../src/services/transactionService');
+
+  // History is mounted: its observer makes the list query refetchable
+  const observer = new InfiniteQueryObserver(queryClient, transactionListQuery({}));
+  const unsubscribe = observer.subscribe(() => {});
+
+  let resolve;
+  createTransactionApi.mockReturnValue(new Promise(r => (resolve = r)));
+  const done = run();
+  await new Promise(r => setTimeout(r, 0)); // let onMutate run
+
+  // The mount/focus refetch answers before the POST is saved: no new row yet
+  getTransactionsApi.mockResolvedValue({
+    transactions: [{ _id: 'old', type: 'expense' }],
+    pagination: { hasNextPage: false },
+  });
+  await queryClient.refetchQueries({ queryKey: allKey });
+  const [first] = queryClient.getQueryData(allKey).pages[0].transactions;
+  expect(first.pending).toBe(true);
+
+  // Server saves; the post-save refetch returns the real row exactly once
+  getTransactionsApi.mockResolvedValue({
+    transactions: [{ _id: 'srv1', type: 'expense' }, { _id: 'old', type: 'expense' }],
+    pagination: { hasNextPage: false },
+  });
+  resolve({ ...payload, _id: 'srv1', accountId: account });
+  await done;
+  await new Promise(r => setTimeout(r, 0));
+
+  expect(ids(allKey)).toEqual(['srv1', 'old']);
+  unsubscribe();
+});
+
 test('rolls back lists, dashboard and balance when the server rejects', async () => {
   createTransactionApi.mockRejectedValue(new Error('Insufficient balance.'));
   const onError = jest.fn();

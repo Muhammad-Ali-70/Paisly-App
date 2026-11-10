@@ -5,6 +5,8 @@ import { Calendar } from 'lucide-react-native';
 import { hp, wp } from '../../constants/responsive';
 import { borderRadius, Label } from '../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
+import { toDayString } from '../../utils/recurring';
+import { calendarDay } from '../../utils/safeToSpend';
 
 const DateRangeSection = ({ dateFrom, dateTo, onDateFromChange, onDateToChange }) => {
   const theme = useThemeColors();
@@ -12,7 +14,7 @@ const DateRangeSection = ({ dateFrom, dateTo, onDateFromChange, onDateToChange }
 
   const formatDate = date => {
     if (!date) return 'Select Date';
-    const d = new Date(date);
+    const d = calendarDay(date);
     return d.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
@@ -26,7 +28,8 @@ const DateRangeSection = ({ dateFrom, dateTo, onDateFromChange, onDateToChange }
     }
     
     if (event.type === 'set' && selectedDate) {
-      const isoDate = selectedDate.toISOString().split('T')[0];
+      // Local calendar day: toISOString() would give yesterday before 05:00 in PKT
+      const isoDate = toDayString(selectedDate);
       if (showPicker === 'from') {
         onDateFromChange(isoDate);
       } else if (showPicker === 'to') {
@@ -110,9 +113,9 @@ const DateRangeSection = ({ dateFrom, dateTo, onDateFromChange, onDateToChange }
           <DateTimePicker
             value={
               showPicker === 'from' && dateFrom
-                ? new Date(dateFrom)
+                ? calendarDay(dateFrom)
                 : showPicker === 'to' && dateTo
-                ? new Date(dateTo)
+                ? calendarDay(dateTo)
                 : new Date()
             }
             mode="date"
@@ -128,9 +131,9 @@ const DateRangeSection = ({ dateFrom, dateTo, onDateFromChange, onDateToChange }
         <DateTimePicker
           value={
             showPicker === 'from' && dateFrom
-              ? new Date(dateFrom)
+              ? calendarDay(dateFrom)
               : showPicker === 'to' && dateTo
-              ? new Date(dateTo)
+              ? calendarDay(dateTo)
               : new Date()
           }
           mode="date"
