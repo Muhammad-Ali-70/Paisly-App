@@ -15,6 +15,7 @@ import { initSentry } from '@services/sentry.js';
 import { queryClient, persistOptions } from '@services/queryClient.js';
 import { Label } from '@constants/globalstyle.js';
 import PrimaryButton from './src/components/ui/PrimaryButton';
+import AppUpdatePrompt from './src/components/common/AppUpdatePrompt';
 
 initSentry();
 
@@ -69,6 +70,7 @@ const AppContent = () => {
       >
         <StatusBar hidden={false} barStyle={barStyle} translucent />
         <RootNavigator />
+        <AppUpdatePrompt />
       </View>
       <SafeAreaView
         edges={['bottom']}
