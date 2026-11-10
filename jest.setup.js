@@ -45,10 +45,6 @@ jest.mock('posthog-react-native', () => ({
 }));
 
 jest.mock('lottie-react-native', () => 'LottieView');
-jest.mock('react-native-quick-actions', () => ({
-  setShortcutItems: jest.fn(),
-  popInitialAction: jest.fn(() => Promise.resolve(null)),
-}));
 jest.mock('react-native-device-info', () =>
   require('react-native-device-info/jest/react-native-device-info-mock'),
 );

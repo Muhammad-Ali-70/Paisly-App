@@ -5,6 +5,7 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import android.os.Bundle
+import androidx.core.content.pm.ShortcutManagerCompat
 import com.swmansion.rnscreens.fragment.restoration.RNScreensFragmentFactory
 
 
@@ -19,6 +20,13 @@ class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     supportFragmentManager.fragmentFactory = RNScreensFragmentFactory()
     super.onCreate(savedInstanceState)
+    // Launcher shortcuts are static now (res/xml/shortcuts.xml). Builds up to
+    // 1.0.3 registered dynamic ones via react-native-quick-actions; those survive
+    // app updates and would show twice, so drop them.
+    try {
+      ShortcutManagerCompat.removeAllDynamicShortcuts(this)
+    } catch (_: Exception) {
+    }
   }
 
   /**

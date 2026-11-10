@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Paisly</string>
+    <string name="shortcut_add_expense">Add Expense</string>
+    <string name="shortcut_add_expense_long">Add a new expense</string>
+    <string name="shortcut_add_income">Add Income</string>
+    <string name="shortcut_add_income_long">Add a new income</string>
+    <string name="shortcut_history">History</string>
+    <string name="shortcut_history_long">View transaction history</string>
     <string name="widget_safetospendwidget_description" translatable="false">What you can spend today, plus your next bill, debt and notifications</string>
 </resources>
