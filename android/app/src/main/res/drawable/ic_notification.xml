@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Notification small icon: the Paisly "P" mark, solid white on transparent.
+  Android tints it (status bar: white/grey; shade header: the `color` set on the
+  notification), so only the alpha channel matters. Paths are in the 512px
+  coordinates of playstore-icon.png, centred in a 380-unit viewport so the mark
+  fills the 20dp live area of the 24dp icon.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="380"
+    android:viewportHeight="380">
+    <group
+        android:translateX="-66"
+        android:translateY="-65">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M135,97L305,97L377,170L377,265L305,265L305,168L135,168Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M135,265L305,265L305,336L206,336L206,413L135,343Z" />
+    </group>
+</vector>
