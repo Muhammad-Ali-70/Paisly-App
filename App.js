@@ -78,9 +78,12 @@ const AppContent = () => {
   );
 };
 
-// Analytics only initializes with a real key in .env (POSTHOG_KEY)
+// Analytics only initializes with a real key in .env (POSTHOG_KEY), and only in
+// release builds, so development sessions don't pollute production analytics
 const hasPostHogKey =
-  !!ENV.POSTHOG_KEY && !ENV.POSTHOG_KEY.includes('your_posthog_key');
+  !__DEV__ &&
+  !!ENV.POSTHOG_KEY &&
+  !ENV.POSTHOG_KEY.includes('your_posthog_key');
 
 const AnalyticsProvider = ({ children }) => {
   if (!hasPostHogKey) return children;

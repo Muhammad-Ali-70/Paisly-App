@@ -9,7 +9,9 @@ export function initSentry() {
     enableLogs: true,
     enabled: !ENV.IS_DEV,
     tracesSampleRate: 0.2,
-    replaysSessionSampleRate: 0.1,
+    // Finance app: no routine session recording. Replays are captured only
+    // around an error (still masked), which is what debugging needs.
+    replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
     integrations: [
       Sentry.mobileReplayIntegration({
