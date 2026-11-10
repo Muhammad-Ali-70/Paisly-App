@@ -10,7 +10,7 @@ const ALERT = '#FDE68A';
 
 const STATUS_PAGES = {
   setup: { label: 'Paisly', amount: 'Set up', caption: 'Open the app to start', tone: 'normal' },
-  stale: { label: 'Safe to spend today', amount: '—', caption: 'Open Paisly to refresh', tone: 'normal' },
+  stale: { label: 'Paisly', amount: '—', caption: 'Open Paisly to refresh', tone: 'normal' },
 };
 
 const pickPage = (snapshot, index, today) => {

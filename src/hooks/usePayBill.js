@@ -3,6 +3,8 @@ import { Alert } from 'react-native';
 import { usePayRecurring, useSkipRecurring } from '../queries/recurring';
 import { useToastService } from '../utils/ToastService';
 import { ACTIVE_CURRENCY, formatAmount } from '../utils/currency';
+import { lowBalanceWarning } from '../utils/lowBalance';
+import useAccountStore from '../store/useAccountStore';
 
 const money = n =>
   `${ACTIVE_CURRENCY.symbol} ${formatAmount(String(Math.round(n)))}`;
@@ -17,23 +19,24 @@ const usePayBill = () => {
   const pay = usePayRecurring();
   const skip = useSkipRecurring();
 
-  const failed = error => {
-    const message = error?.message ?? 'Something went wrong. Please try again.';
-    if (message === 'Insufficient balance.') {
-      toast.warning('Insufficient balance in the bill’s account.');
-    } else {
-      toast.error(message);
-    }
-  };
+  const failed = error =>
+    toast.error(error?.message ?? 'Something went wrong. Please try again.');
 
   const confirmPaid = useCallback(
     bill => {
       const verb = bill.type === 'income' ? 'received' : 'paid';
+      // Paying may take the account negative; say so in the same dialog
+      const accountId = bill.accountId?._id ?? bill.accountId;
+      const account = useAccountStore
+        .getState()
+        .accounts.find(a => a._id === accountId);
+      const warning =
+        bill.type === 'expense' ? lowBalanceWarning(account, -bill.amount) : null;
       Alert.alert(
         `Mark ${bill.title} as ${verb}?`,
         `${money(bill.amount)} will be recorded${
           bill.accountId?.label ? ` in ${bill.accountId.label}` : ''
-        } and the next due date set.`,
+        } and the next due date set.${warning ? `\n\n${warning}` : ''}`,
         [
           { text: 'Cancel', style: 'cancel' },
           {

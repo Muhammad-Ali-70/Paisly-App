@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Long-press launcher shortcuts. Native static shortcuts (no library): each one
+  opens a paisly:// deep link, which RootNavigator turns into a pending action,
+  the same path the home-screen widget uses, so cold start, warm start and
+  logged-out all behave alike.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut
+    android:shortcutId="addExpense"
+    android:enabled="true"
+    android:icon="@drawable/ic_shortcut_expense"
+    android:shortcutShortLabel="@string/shortcut_add_expense"
+    android:shortcutLongLabel="@string/shortcut_add_expense_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="paisly://addExpense"
+      android:targetPackage="com.paisly.app"
+      android:targetClass="com.paisly.app.MainActivity" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="addIncome"
+    android:enabled="true"
+    android:icon="@drawable/ic_shortcut_income"
+    android:shortcutShortLabel="@string/shortcut_add_income"
+    android:shortcutLongLabel="@string/shortcut_add_income_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="paisly://addIncome"
+      android:targetPackage="com.paisly.app"
+      android:targetClass="com.paisly.app.MainActivity" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="viewHistory"
+    android:enabled="true"
+    android:icon="@drawable/ic_shortcut_history"
+    android:shortcutShortLabel="@string/shortcut_history"
+    android:shortcutLongLabel="@string/shortcut_history_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="paisly://history"
+      android:targetPackage="com.paisly.app"
+      android:targetClass="com.paisly.app.MainActivity" />
+  </shortcut>
+</shortcuts>

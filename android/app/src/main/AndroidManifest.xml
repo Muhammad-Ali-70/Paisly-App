@@ -1,7 +1,14 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
 
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <!-- Merged in by notifee but unused: reminders use inexact alarms and the app
+       never runs a foreground service. Removing them avoids Play declarations. -->
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" tools:node="remove" />
 
   <application
     android:name=".MainApplication"
@@ -30,7 +37,12 @@
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="paisly" />
       </intent-filter>
+      <meta-data
+        android:name="android.app.shortcuts"
+        android:resource="@xml/shortcuts" />
     </activity>
+
+    <service android:name="app.notifee.core.ForegroundService" tools:node="remove" />
 
     <service
       android:name="com.reactnativeandroidwidget.RNWidgetCollectionService"

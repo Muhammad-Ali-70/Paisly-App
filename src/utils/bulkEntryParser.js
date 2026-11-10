@@ -5,6 +5,10 @@ const MAX_DESCRIPTION = 200;
 
 // Matches "1,250.50", "250", "2.5k". `k` multiplies by 1000.
 const NUMBER = /\d[\d,]*(?:\.\d+)?k?/gi;
+// Pakistani mobile numbers ("03001234567", "0300-1234567", "+923001234567")
+const PHONE = /(?:\+?92|0)3\d{2}[-\s]?\d{7}/g;
+// Anything above this is almost certainly a typo or a pasted id, not spending
+const MAX_AMOUNT = 100000000; // 10 crore
 const CURRENCY_BEFORE = /(?:rs\.?|pkr|₨|\$)\s*$/i;
 const CURRENCY_AFTER = /^\s*(?:rs\.?|pkr|\/-)/i;
 
@@ -73,12 +77,20 @@ export const parseLine = (rawLine, defaultType = 'expense') => {
     line = line.slice(1).trim();
   }
 
-  const amounts = findAmounts(line);
-  if (amounts.length === 0) return { error: 'No amount found' };
+  // Phone numbers are blanked (same length, so positions still line up) before
+  // looking for amounts, then kept in the description: "jazzcash 03001234567 500"
+  const phones = line.match(PHONE) ?? [];
+  const amounts = findAmounts(line.replace(PHONE, m => ' '.repeat(m.length)));
+  if (amounts.length === 0) {
+    return { error: phones.length ? 'Looks like a phone number, not an amount' : 'No amount found' };
+  }
 
   const picked = pickAmount(line, amounts);
   if (!Number.isFinite(picked.value) || picked.value <= 0) {
     return { error: 'Amount must be more than 0' };
+  }
+  if (picked.value > MAX_AMOUNT) {
+    return { error: 'Amount looks too large. Check this line' };
   }
 
   const before = line.slice(0, picked.start).replace(CURRENCY_BEFORE, '');

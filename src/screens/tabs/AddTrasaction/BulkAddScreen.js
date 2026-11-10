@@ -30,6 +30,7 @@ import { useCreateBulkTransactions } from '../../../queries/transactions';
 import useAccountStore from '../../../store/useAccountStore';
 import useCategoryStore from '../../../store/useCategoryStore';
 import { useToastService } from '../../../utils/ToastService';
+import { confirmLowBalance } from '../../../utils/lowBalance';
 
 const PLACEHOLDER = 'chai 50\nrickshaw 120\nlunch 450\n+ salary 80000';
 
@@ -128,12 +129,9 @@ const BulkAddScreen = ({ navigation, route }) => {
       toast.warning('Please select an account.');
       return;
     }
-    // Same rule the server applies: the batch's net effect can't overdraw
+    // The batch's net effect may take the account negative; ask first
     const net = summary.incomeTotal - summary.expenseTotal;
-    if ((account.balance ?? 0) + net < 0) {
-      toast.warning('Insufficient balance in this account.');
-      return;
-    }
+    if (!(await confirmLowBalance(account, net))) return;
 
     // First line is the newest, so History shows entries in the order typed
     const baseMs = date.getTime();
@@ -157,12 +155,7 @@ const BulkAddScreen = ({ navigation, route }) => {
       navigation.navigate('TabNavigator', { screen: 'History' });
     } catch (e) {
       console.error('Bulk add failed:', e);
-      const message = e?.message ?? 'Could not add transactions. Try again.';
-      if (message === 'Insufficient balance.') {
-        toast.warning('Insufficient balance in this account.');
-      } else {
-        toast.error(message);
-      }
+      toast.error(e?.message ?? 'Could not add transactions. Try again.');
     }
   };
 

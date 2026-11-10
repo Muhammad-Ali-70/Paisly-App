@@ -94,6 +94,7 @@ const SettingsScreen = () => {
     setDeleteError(null);
     const result = await deleteAccount({ password });
     setDeleting(false);
+    if (result.cancelled) return; // closed the Google picker: keep the modal open, no error
     if (result.success) {
       toast.success('Your account has been deleted');
     } else {
@@ -113,6 +114,7 @@ const SettingsScreen = () => {
           name={displayName}
           email={email}
           isPremium={false}
+          isGoogleLinked={!!user?.isGoogleLinked}
           avatarUrl={user?.avatar}
           onEditPress={() => navigation.navigate('EditProfile')}
         />
@@ -327,6 +329,7 @@ const SettingsScreen = () => {
         visible={deleteVisible}
         loading={deleting}
         error={deleteError}
+        usesGoogle={user?.hasPassword === false}
         onConfirm={handleDeleteAccount}
         onCancel={() => {
           setDeleteVisible(false);

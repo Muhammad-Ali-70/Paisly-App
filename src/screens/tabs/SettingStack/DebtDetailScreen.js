@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Pencil, Trash2 } from 'lucide-react-native';
+import { Pencil, Trash2, HandCoins } from 'lucide-react-native';
 import { hp, wp } from '../../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { Label } from '../../../constants/globalstyle';
@@ -15,6 +15,15 @@ import {
 import { useRefreshOnFocus } from '../../../hooks/useRefreshOnFocus';
 import { formatDate } from '../../../utils/date';
 import ThemedView from '../../../components/ui/ThemedView';
+import RecordDebtPaymentModal from '../../../components/modals/debt/RecordDebtPaymentModal';
+
+const STATUS_LABELS = {
+  active: 'Active',
+  partially_paid: 'Partially paid',
+  overdue: 'Overdue',
+  settled: 'Settled',
+  waived: 'Waived',
+};
 
 const DebtDetailScreen = ({ navigation, route }) => {
   const { id } = route.params;
@@ -24,6 +33,7 @@ const DebtDetailScreen = ({ navigation, route }) => {
   const debtQuery = useDebt(id);
   const transactionsQuery = useDebtTransactions(id);
   const deleteDebt = useDeleteDebt();
+  const [paymentVisible, setPaymentVisible] = useState(false);
   // Refresh after returning from the edit screen
   useRefreshOnFocus(['debts', 'detail', id]);
 
@@ -41,7 +51,10 @@ const DebtDetailScreen = ({ navigation, route }) => {
   }, [loadError, debtQuery.error, navigation]);
 
   const handleDeleteDebt = () => {
-    Alert.alert('Delete Debt', 'Are you sure you want to delete this debt? This cannot be undone.', [
+    Alert.alert(
+      'Delete Debt',
+      'This removes the debt and the transactions it created (the loan and any repayments), and puts your account balances back. Expenses you paid with this money stay. This cannot be undone.',
+      [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -57,9 +70,9 @@ const DebtDetailScreen = ({ navigation, route }) => {
               Alert.alert('Error', 'Failed to delete debt. Please try again.');
             },
           }),
-
       },
-    ]);
+      ],
+    );
   };
 
   if (loading) {
@@ -97,6 +110,9 @@ const DebtDetailScreen = ({ navigation, route }) => {
     );
   }
 
+  const isOpen =
+    debt.status !== 'settled' && debt.status !== 'waived' && debt.remainingAmount > 0;
+
   return (
     <ThemedView style={styles.safe}>
       <ScreenHeader
@@ -124,6 +140,22 @@ const DebtDetailScreen = ({ navigation, route }) => {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.detailCard}>
+          <Label type="bodySmall" weight="semiBold" color="textMuted">
+            {debt.debtType === 'receivable' ? 'Still to receive' : 'Still to pay'}
+          </Label>
+          <Label
+            type="h4"
+            weight="bold"
+            color={debt.debtType === 'receivable' ? 'primary' : 'error'}
+            style={styles.detailValue}
+          >
+            PKR {(debt.remainingAmount ?? 0).toLocaleString()}
+          </Label>
+          <Label type="bodyXs" weight="regular" color="textMuted" style={styles.detailValue}>
+            {STATUS_LABELS[debt.status] || debt.status}
+          </Label>
+        </View>
         {debt.sourceAccountId && (
           <View style={styles.detailCard}>
             <Label type="bodySmall" weight="semiBold" color="textMuted">Source Account</Label>
@@ -210,6 +242,24 @@ const DebtDetailScreen = ({ navigation, route }) => {
           </SkeletonPulse>
         )}
       </ScrollView>
+
+      {isOpen && (
+        <View style={styles.footer}>
+          <PrimaryButton
+            variant="primary"
+            size="lg"
+            label={debt.debtType === 'receivable' ? 'Record Money Received' : 'Record Payment'}
+            leftIcon={<HandCoins size={wp(5)} color={theme.onPrimary} />}
+            onPress={() => setPaymentVisible(true)}
+          />
+        </View>
+      )}
+
+      <RecordDebtPaymentModal
+        visible={paymentVisible}
+        debt={debt}
+        onClose={() => setPaymentVisible(false)}
+      />
     </ThemedView>
   );
 };
@@ -274,6 +324,11 @@ const createStyles = t =>
     },
     loadingTransactions: {
       paddingVertical: hp(1),
+    },
+    footer: {
+      paddingHorizontal: wp(5),
+      paddingVertical: hp(2),
+      backgroundColor: t.background,
     },
   });
 

@@ -52,36 +52,62 @@ export const billsCommitted = (bills, payday) =>
       return sum + count * b.amount;
     }, 0);
 
+/** Udhar the user owes that falls due before `payday` (overdue ones included). */
+export const debtsCommitted = (debts, payday) =>
+  (debts ?? [])
+    .filter(d => d.remainingAmount > 0 && calendarDayLocal(d.dueDate) < payday)
+    .reduce((sum, d) => sum + d.remainingAmount, 0);
+
+// Debt due dates are full timestamps (not 12:00 UTC calendar days like bills)
+const calendarDayLocal = iso => startOfDay(new Date(iso));
+
 /**
  * What the user can spend today and still reach payday.
  *
- * The pool is the lower of the budget left and the cash left after upcoming
- * bills, so the number never suggests more than either allows, and it still
- * works for someone who hasn't set a budget. Today's own spending is added back
- * before dividing, so the daily allowance stays put during the day and
- * `leftToday` is what shrinks as they spend.
+ * Two limits, and the lower one wins, so the number never suggests more than
+ * either allows (it still works for someone without a budget):
+ *  - cash: balance minus bills and udhar repayments due before payday, spread
+ *    over the days until payday;
+ *  - budget: this month's budget left, spread over the days left in *this
+ *    month* only (the budget resets on the 1st, so it can't fund days after).
+ * Today's own spending is added back before dividing, so the daily allowance
+ * stays put during the day and `leftToday` is what shrinks as they spend.
  */
 export const computeSafeToSpend = ({
   balance,
   budgetRemaining = null,
   bills = [],
+  debts = [],
   paydayDay = null,
   spentToday = 0,
   now = new Date(),
 }) => {
   const payday = nextPayday(paydayDay, now);
   const daysLeft = daysUntil(payday, now);
-  const committed = billsCommitted(bills, payday);
-  const cash = balance - committed;
-  const hasBudget = budgetRemaining !== null && budgetRemaining !== undefined;
-  const limitedByBudget = hasBudget && budgetRemaining < cash;
-  const pool = (limitedByBudget ? budgetRemaining : cash) + spentToday;
+  const billsDue = billsCommitted(bills, payday);
+  const debtsDue = debtsCommitted(debts, payday);
+  const committed = billsDue + debtsDue;
 
-  const allowance = pool > 0 ? Math.floor(pool / daysLeft) : 0;
+  const cashPool = balance - committed + spentToday;
+  const cashDaily = cashPool / daysLeft;
+
+  const hasBudget = budgetRemaining !== null && budgetRemaining !== undefined;
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const budgetDays = Math.min(daysLeft, daysUntil(monthEnd, now));
+  const budgetPool = hasBudget ? budgetRemaining + spentToday : Infinity;
+  const budgetDaily = budgetPool / budgetDays;
+
+  const limitedByBudget = hasBudget && budgetDaily < cashDaily;
+  const pool = limitedByBudget ? budgetPool : cashPool;
+  const daily = limitedByBudget ? budgetDaily : cashDaily;
+
+  const allowance = daily > 0 ? Math.floor(daily) : 0;
   return {
     payday,
     daysLeft,
     committed,
+    billsCommitted: billsDue,
+    debtsCommitted: debtsDue,
     allowance,
     leftToday: allowance - spentToday,
     spentToday,

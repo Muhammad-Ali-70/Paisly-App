@@ -27,7 +27,7 @@ const SIZES = {
     labelWeight: 'semiBold',
   },
   lg: {
-    height: hp(6),
+    height: Math.min(Math.max(hp(6), 48), 56),
     px: wp(6),
     labelType: 'body',
     labelWeight: 'semiBold',
@@ -130,7 +130,11 @@ const PrimaryButton = ({
     >
       {loading ? (
         <ActivityIndicator
-          color={theme.onPrimary}
+          color={
+            resolvedLabelColor === 'onPrimary' && !bg
+              ? theme.onPrimary
+              : theme.primary
+          }
           size="small"
         />
       ) : (

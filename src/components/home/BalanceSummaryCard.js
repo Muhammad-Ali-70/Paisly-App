@@ -7,7 +7,8 @@ import { useThemeColors } from '@hooks/useThemeColors';
 import { getGradients } from '../../constants/colors';
 import useAppStore from '@store/useAppStore';
 import { Label, borderRadius, shadowCard } from '../../constants/globalstyle';
-import CurrencyView from '../common/CurrencyView';
+import { formatDisplay } from '../common/CurrencyView';
+import RollingNumber from '../common/RollingNumber';
 
 const BalanceSummaryCard = ({ totalBalance = 0, monthlyChange = '+2.4%' }) => {
   const theme = useThemeColors();
@@ -31,8 +32,9 @@ const BalanceSummaryCard = ({ totalBalance = 0, monthlyChange = '+2.4%' }) => {
         TOTAL BALANCE
       </Label>
 
-      <CurrencyView
-        amount={totalBalance}
+      {/* Rolls softly to the new total when a transaction changes it */}
+      <RollingNumber
+        text={formatDisplay(totalBalance)}
         type="h4"
         weight="bold"
         color="onPrimary"

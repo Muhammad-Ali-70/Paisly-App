@@ -2,7 +2,7 @@ import React from 'react';
 import { Label } from '../../constants/globalstyle';
 import { ACTIVE_CURRENCY } from '../../utils/currency';
 
-const formatDisplay = (amount, currency) => {
+export const formatDisplay = (amount, currency = ACTIVE_CURRENCY) => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (isNaN(num)) return `${currency.symbol}0`;
 

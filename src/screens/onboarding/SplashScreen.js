@@ -3,7 +3,7 @@ import { StyleSheet, ImageBackground } from 'react-native';
 
 import PrimaryLoader from '../../components/ui/PrimaryLoader';
 import Logo from '../../components/ui/Logo';
-import BackImage from '../../assets/images/onboarding/splashbackground.png';
+import BackImage from '../../assets/images/onboarding/splashbackground.webp';
 import { healthCheckApi } from '../../services/authService';
 
 const SplashScreen = () => {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Label, borderRadius } from '../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { hp, wp } from '../../constants/responsive';
@@ -83,13 +83,21 @@ const AppTextInput = ({
         />
 
         {rightIconName ? (
-          <TouchableOpacity
-            style={styles.rightIcon}
+          <Pressable
+            style={({ pressed }) => [styles.rightIcon, pressed && styles.pressed]}
             onPress={onRightIconPress}
-            activeOpacity={0.7}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              rightIconName === 'eye'
+                ? 'Hide password'
+                : rightIconName === 'eye-off'
+                ? 'Show password'
+                : undefined
+            }
           >
             <AppIcon name={rightIconName} color={theme.textMuted} />
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
       </View>
 
@@ -111,11 +119,20 @@ const createStyles = t => StyleSheet.create({
     backgroundColor: t.surfacePrimary,
     borderWidth: 1,
     borderRadius: borderRadius.lg,
-    height: hp(6),
+    // Clamp so the field is never cramped on small phones or huge on tablets
+    height: Math.min(Math.max(hp(6), 48), 56),
     paddingHorizontal: wp(4),
   },
   leftIcon: { marginRight: wp(2.5) },
-  rightIcon: { marginLeft: wp(2.5) },
+  // Full-height, 48dp-wide tap target that reaches the field's right edge
+  rightIcon: {
+    alignSelf: 'stretch',
+    width: 48,
+    marginRight: -wp(4),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: { opacity: 0.5 },
   input: {
     flex: 1,
     color: t.textMain,

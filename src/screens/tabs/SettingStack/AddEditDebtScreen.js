@@ -21,6 +21,9 @@ import { useDebt, useSaveDebt } from '../../../queries/debts';
 import { useToastService } from '../../../utils/ToastService';
 import ThemedView from '../../../components/ui/ThemedView';
 import { SkeletonPulse, SkeletonBox } from '../../../components/common/skeleton/Skeleton';
+import { Label } from '../../../constants/globalstyle';
+import useAccountStore from '../../../store/useAccountStore';
+import { confirmLowBalance } from '../../../utils/lowBalance';
 
 const AddEditDebtScreen = ({ navigation, route }) => {
   const { debtId } = route.params || {};
@@ -123,12 +126,17 @@ const AddEditDebtScreen = ({ navigation, route }) => {
       Alert.alert('Invalid Dates', 'Due date cannot be before the start date.');
       return;
     }
+    // Lending ("receivable") takes the money out of the source account
+    if (!isEditing && debtType === 'receivable') {
+      const account = useAccountStore
+        .getState()
+        .accounts.find(a => a._id === sourceAccountId);
+      if (!(await confirmLowBalance(account, -parsedAmount))) return;
+    }
 
     try {
       const debtData = {
-        debtType,
         description: description.trim(),
-        totalAmount: parsedAmount,
         counterpartyName: counterpartyName.trim(),
         counterpartyEmail: counterpartyEmail.trim(),
         startDate: startDate.toISOString(),
@@ -137,12 +145,21 @@ const AddEditDebtScreen = ({ navigation, route }) => {
         interestType,
         interestFrequency,
         category: category.trim().toLowerCase(),
-        reminderDaysBefore: parseInt(reminderDaysBefore) || 3,
+        // 0 ("on the due day") is a valid choice; only blank/garbage falls back to 3
+        reminderDaysBefore: Number.isFinite(parseInt(reminderDaysBefore, 10))
+          ? parseInt(reminderDaysBefore, 10)
+          : 3,
         reminderFrequency,
         reminderChannels,
         notes: notes.trim(),
-        sourceAccountId,
       };
+      // Type, amount and account moved money when the debt was created, so the
+      // server only accepts them on create. Repayments use "Record Payment".
+      if (!isEditing) {
+        debtData.debtType = debtType;
+        debtData.totalAmount = parsedAmount;
+        debtData.sourceAccountId = sourceAccountId;
+      }
 
       await saveDebt.mutateAsync({
         id: isEditing ? debtId : undefined,
@@ -222,7 +239,7 @@ const AddEditDebtScreen = ({ navigation, route }) => {
             { value: 'receivable', label: 'Receivable', color: theme.primary },
           ]}
           activeValue={debtType}
-          onSelect={setDebtType}
+          onSelect={isEditing ? () => {} : setDebtType}
         />
       </View>
 
@@ -247,7 +264,14 @@ const AddEditDebtScreen = ({ navigation, route }) => {
             keyboardType="numeric"
             leftIconName="card"
             returnKeyType="next"
+            editable={!isEditing}
           />
+          {isEditing && (
+            <Label type="bodyXs" weight="regular" color="textMuted" style={styles.lockedHint}>
+              Type, amount and account can't be changed after creation. Use
+              "Record Payment" on the debt to log a repayment.
+            </Label>
+          )}
           <AppTextInput
             label="Counterparty Name"
             placeholder="e.g., Bank, Friend Name"
@@ -265,11 +289,19 @@ const AddEditDebtScreen = ({ navigation, route }) => {
             leftIconName="mail"
             returnKeyType="next"
           />
-          <PaymentSourcePicker
-            activeId={sourceAccountId}
-            onSelect={setSourceAccountId}
-            onSeeAll={() => setSourceModalVisible(true)}
-          />
+          {isEditing ? (
+            <AppTextInput
+              label="Source Account"
+              value={debtQuery.data?.sourceAccountId?.label || ''}
+              editable={false}
+            />
+          ) : (
+            <PaymentSourcePicker
+              activeId={sourceAccountId}
+              onSelect={setSourceAccountId}
+              onSeeAll={() => setSourceModalVisible(true)}
+            />
+          )}
           <DebtDatePicker
             label="Start Date"
             date={startDate}
@@ -346,6 +378,10 @@ const createStyles = t =>
       paddingHorizontal: wp(5),
       paddingVertical: hp(2),
       backgroundColor: t.background,
+    },
+    lockedHint: {
+      marginTop: -hp(0.5),
+      marginBottom: hp(1),
     },
     loadingWrap: {
       paddingHorizontal: wp(5),

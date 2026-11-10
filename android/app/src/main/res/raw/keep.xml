@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  shrinkResources only sees resource names used from native code or XML. These are
+  looked up by name from JS (notifee smallIcon, quick-action shortcut icons), so
+  without this file the release build strips them.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification,@drawable/ic_shortcut_expense,@drawable/ic_shortcut_income,@drawable/ic_shortcut_history" />

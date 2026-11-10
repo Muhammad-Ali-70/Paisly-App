@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the JS splash (splashbackground.webp) so there is no white/black flash before it draws -->
+    <color name="splash_background">#F1F5F9</color>
+</resources>

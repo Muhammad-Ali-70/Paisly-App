@@ -8,6 +8,8 @@ module.exports = {
         path: '.env',
       },
     ],
+    // Per-icon imports instead of the whole lucide barrel (bundle size)
+    './babel-plugin-lucide-icons',
     'react-native-reanimated/plugin',
     [
       'module-resolver',

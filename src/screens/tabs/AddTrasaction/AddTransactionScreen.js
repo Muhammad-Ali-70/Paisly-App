@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -42,6 +42,7 @@ import useAppStore from '../../../store/useAppStore';
 import { useToastService } from '../../../utils/ToastService';
 import InvestmentSetupModal from '../../../components/modals/investment/InvestmentSetupModal';
 import { detectCategory } from '../../../utils/categoryDetector';
+import { confirmLowBalance } from '../../../utils/lowBalance';
 
 const toPickerItem = c => ({
   id: c._id,
@@ -83,6 +84,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
   const [date, setDate] = useState(new Date());
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
 
   const [investmentModalVisible, setInvestmentModalVisible] = useState(false);
   const [investmentConfig, setInvestmentConfig] = useState(null);
@@ -105,11 +107,7 @@ const AddTransactionScreen = ({ navigation, route }) => {
       console.error('Save transaction failed:', e);
       const message =
         e?.message ?? 'Could not save transaction. Please try again.';
-      if (message === 'Insufficient balance.') {
-        toast.warning('Insufficient balance in this account.');
-      } else {
-        toast.error(`Transaction not saved: ${message}`);
-      }
+      toast.error(`Transaction not saved: ${message}`);
     },
   });
   const theme = useThemeColors();
@@ -232,6 +230,18 @@ const AddTransactionScreen = ({ navigation, route }) => {
   const openBulkAdd = () => navigation?.navigate('BulkAdd', { type });
 
   const handleSave = async () => {
+    // Double-tap guard: the optimistic path never sets `saving`, and a second
+    // tap before navigation would post the same expense twice
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    try {
+      await saveTransaction();
+    } finally {
+      saveInFlight.current = false;
+    }
+  };
+
+  const saveTransaction = async () => {
     const parsedAmount = parseFloat(amount);
 
     if (!parsedAmount || parsedAmount <= 0) {
@@ -252,12 +262,9 @@ const AddTransactionScreen = ({ navigation, route }) => {
         Alert.alert('No account', 'Please select an account.');
         return;
       }
-      // Same rule the server enforces; checked up front because the save
-      // below is optimistic and the user will already have left this screen.
-      if (isExpense && (account.balance ?? 0) < parsedAmount) {
-        toast.warning('Insufficient balance in this account.');
-        return;
-      }
+      // Asked up front because the save below is optimistic and the user
+      // will already have left this screen.
+      if (isExpense && !(await confirmLowBalance(account, -parsedAmount))) return;
 
       const payload = {
         accountId: sourceId,
@@ -282,6 +289,9 @@ const AddTransactionScreen = ({ navigation, route }) => {
       return;
     }
 
+    const investAccount = accounts.find(a => a._id === sourceId);
+    if (!(await confirmLowBalance(investAccount, -parsedAmount))) return;
+
     setSaving(true);
     try {
       await createInvestmentApi({
@@ -296,18 +306,11 @@ const AddTransactionScreen = ({ navigation, route }) => {
       });
 
       invalidateTransactionData(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
       navigation?.navigate('TabNavigator', { screen: 'History' });
     } catch (e) {
       console.error('Save investment failed:', e);
-
-      const message =
-        e?.message ?? 'Could not save transaction. Please try again.';
-
-      if (message === 'Insufficient balance.') {
-        toast.warning('Insufficient balance in this account.');
-      } else {
-        toast.error(message);
-      }
+      toast.error(e?.message ?? 'Could not save transaction. Please try again.');
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,6 @@
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
+const path = require('path');
 const {withSentryConfig} = require('@sentry/react-native/metro');
 
 const defaultConfig = getDefaultConfig(__dirname);
@@ -18,6 +19,18 @@ const config = {
     ),
   },
   resolver: {
+    // babel-plugin-lucide-icons rewrites icon imports to these per-icon files.
+    // lucide's package "exports" only lists the barrel, so resolve them as
+    // plain files (otherwise Metro warns for every icon before falling back).
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName.startsWith('lucide-react-native/dist/cjs/icons/')) {
+        return {
+          type: 'sourceFile',
+          filePath: path.join(__dirname, 'node_modules', moduleName),
+        };
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
     assetExts: assetExts.filter(ext => ext !== 'svg'),
     sourceExts: [...sourceExts, 'svg'],
     alias: {
@@ -36,6 +49,4 @@ const config = {
   },
 };
 
-module.exports = withSentryConfig(
-  withSentryConfig(mergeConfig(defaultConfig, config)),
-);
+module.exports = withSentryConfig(mergeConfig(defaultConfig, config));

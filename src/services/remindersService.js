@@ -1,11 +1,17 @@
 import notifee, {
   AlarmType,
   AndroidImportance,
+  AndroidVisibility,
   AuthorizationStatus,
   RepeatFrequency,
   TriggerType,
 } from '@notifee/react-native';
 import { ACTIVE_CURRENCY, formatAmount } from '../utils/currency';
+
+// A sync queued just before logout can run after cancelAllReminders; checking
+// the session when it runs stops the old user's reminders being rescheduled.
+// Lazy require avoids a circular import (the auth store imports this file).
+const hasSession = () => !!require('../store/useAuthStore').default.getState().token;
 
 // Everything here is local: the phone already knows the reminder time and the
 // debt due dates, so no server or FCM is involved. Notification ids are
@@ -105,6 +111,8 @@ export const syncDailyReminder = ({ enabled, hour, minute, loggedToday }) =>
         data: { action: REMINDER_ACTIONS.ADD_EXPENSE },
         android: {
           channelId: CHANNELS.daily,
+          smallIcon: 'ic_notification',
+          color: '#10B981',
           pressAction: { id: 'default', launchActivity: 'default' },
         },
       },
@@ -140,6 +148,10 @@ const debtNotification = (id, title, debt) => ({
   data: { action: REMINDER_ACTIONS.VIEW_DEBTS },
   android: {
     channelId: CHANNELS.debt,
+    smallIcon: 'ic_notification',
+    // Names and amounts stay hidden on the lock screen
+    visibility: AndroidVisibility.PRIVATE,
+    color: '#10B981',
     pressAction: { id: 'default', launchActivity: 'default' },
   },
 });
@@ -155,7 +167,7 @@ export const syncDebtReminders = ({ enabled, debts = [] }) =>
     const pending = await notifee.getTriggerNotificationIds();
     const stale = pending.filter(id => id.startsWith(DEBT_PREFIX));
     if (stale.length) await notifee.cancelTriggerNotifications(stale);
-    if (!enabled) return;
+    if (!enabled || !hasSession()) return;
 
     await ensureChannels();
     const now = Date.now();
@@ -200,6 +212,9 @@ const billNotification = (id, title, bill) => ({
   data: { action: REMINDER_ACTIONS.VIEW_BILLS },
   android: {
     channelId: CHANNELS.bill,
+    smallIcon: 'ic_notification',
+    visibility: AndroidVisibility.PRIVATE,
+    color: '#10B981',
     pressAction: { id: 'default', launchActivity: 'default' },
   },
 });
@@ -214,7 +229,7 @@ export const syncBillReminders = ({ enabled, bills = [] }) =>
     const pending = await notifee.getTriggerNotificationIds();
     const stale = pending.filter(id => id.startsWith(BILL_PREFIX));
     if (stale.length) await notifee.cancelTriggerNotifications(stale);
-    if (!enabled) return;
+    if (!enabled || !hasSession()) return;
 
     await ensureChannels();
     const now = Date.now();

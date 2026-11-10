@@ -1,20 +1,17 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import {
-  View,
-  StyleSheet,
-  // Image, // TODO(post-MVP): Google Sign-In button
-} from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import AppTextInput from '../../components/ui/AppTextInput';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import AuthTagline from '../../components/auth/AuthTagline';
 import AuthFooter from '../../components/auth/AuthFooter';
+import AuthLegalNote from '../../components/auth/AuthLegalNote';
 import LoginOptionsRow from '../../components/auth/LoginOptionsRow';
-// TODO(post-MVP): Google Sign-In button
-// import SectionDivider from '../../components/onboarding/Sectiondivider';
-// import GoogleImage from '../../assets/images/static/logos/google.png';
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
+import SectionDivider from '../../components/onboarding/Sectiondivider';
 import { useToastService } from '../../utils/ToastService';
 import useAuthStore from '../../store/useAuthStore';
 
@@ -26,6 +23,7 @@ const LoginScreen = ({ navigation }) => {
   const login = useAuthStore(s => s.login);
   const isLoading = useAuthStore(s => s.isLoading);
   const theme = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [email, setEmail] = useState('');
@@ -68,51 +66,58 @@ const LoginScreen = ({ navigation }) => {
     <View style={styles.safe}>
       <KeyboardAwareScrollView
         bottomOffset={hp(3)}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: Math.max(insets.bottom, hp(2)) },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <AuthTagline
-          title="Welcome Back"
-          subtitle="Sign in to continue tracking your finances."
-        />
+        <View>
+          <AuthTagline
+            title="Welcome Back"
+            subtitle="Sign in to continue tracking your finances."
+          />
 
-        <AppTextInput
-          label="Email Address"
-          placeholder="john@example.com"
-          value={email}
-          onChangeText={text => {
-            setEmail(text);
-            clearError('email');
-          }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          error={errors.email}
-          leftIconName="mail"
-        />
+          <AppTextInput
+            label="Email Address"
+            placeholder="john@example.com"
+            value={email}
+            onChangeText={text => {
+              setEmail(text);
+              clearError('email');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            error={errors.email}
+            leftIconName="mail"
+          />
 
-        <AppTextInput
-          label="Password"
-          placeholder="••••••••"
-          value={password}
-          onChangeText={text => {
-            setPassword(text);
-            clearError('password');
-          }}
-          secureTextEntry={!showPassword}
-          error={errors.password}
-          leftIconName="lock"
-          rightIconName={showPassword ? 'eye' : 'eye-off'}
-          onRightIconPress={() => setShowPassword(v => !v)}
-        />
+          <AppTextInput
+            label="Password"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={text => {
+              setPassword(text);
+              clearError('password');
+            }}
+            secureTextEntry={!showPassword}
+            autoComplete="password"
+            textContentType="password"
+            error={errors.password}
+            leftIconName="lock"
+            rightIconName={showPassword ? 'eye' : 'eye-off'}
+            onRightIconPress={() => setShowPassword(v => !v)}
+          />
 
-        <LoginOptionsRow
-          rememberMe={rememberMe}
-          onRememberMeToggle={() => setRememberMe(v => !v)}
-          onForgotPassword={() => navigation.navigate('ForgotPasswordScreen')}
-        />
+          <LoginOptionsRow
+            rememberMe={rememberMe}
+            onRememberMeToggle={() => setRememberMe(v => !v)}
+            onForgotPassword={() => navigation.navigate('ForgotPasswordScreen')}
+          />
 
-        <View style={styles.ctaWrapper}>
           <PrimaryButton
             variant="primary"
             size="lg"
@@ -120,32 +125,22 @@ const LoginScreen = ({ navigation }) => {
             onPress={handleLogin}
             loading={isLoading}
             disabled={isLoading}
+            style={styles.cta}
           />
         </View>
 
-        {/* TODO(post-MVP): re-enable once Google Sign-In is wired up
-        <SectionDivider label="OR CONTINUE WITH" style={styles.divider} />
-
-        <PrimaryButton
-          variant="outline"
-          size="lg"
-          label="Google"
-          leftIcon={
-            <Image
-              source={GoogleImage}
-              style={styles.googleLogo}
-              resizeMode="contain"
-            />
-          }
-          onPress={() => {}}
-        />
-        */}
-
-        <AuthFooter
-          prompt="Don't have an account?"
-          actionLabel="Sign Up"
-          onActionPress={() => navigation.navigate('SignUpScreen')}
-        />
+        {/* Pinned to the bottom on tall screens; flows naturally on short ones */}
+        <View style={styles.bottom}>
+          <SectionDivider label="OR" style={styles.divider} />
+          <GoogleSignInButton disabled={isLoading} />
+          <AuthFooter
+            prompt="Don't have an account?"
+            actionLabel="Sign Up"
+            onActionPress={() => navigation.navigate('SignUpScreen')}
+            style={styles.footer}
+          />
+          <AuthLegalNote />
+        </View>
       </KeyboardAwareScrollView>
     </View>
   );
@@ -153,19 +148,17 @@ const LoginScreen = ({ navigation }) => {
 
 const createStyles = t =>
   StyleSheet.create({
-    flex: { flex: 1 },
     safe: { flex: 1, backgroundColor: t.background },
     scroll: {
+      flexGrow: 1,
+      justifyContent: 'space-between',
       paddingHorizontal: wp(5),
       paddingTop: hp(2),
-      paddingBottom: hp(4),
     },
-    ctaWrapper: { marginTop: hp(1.5) },
-    divider: { paddingHorizontal: 0 },
-    googleLogo: {
-      width: 25,
-      height: 25,
-    },
+    cta: { marginTop: hp(1) },
+    bottom: { paddingTop: hp(2) },
+    divider: { paddingHorizontal: 0, marginTop: 0 },
+    footer: { marginTop: hp(2.5) },
   });
 
 export default LoginScreen;

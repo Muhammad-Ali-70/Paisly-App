@@ -18,7 +18,7 @@ const AuthTagline = ({ title, subtitle, style }) => (
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: hp(3.5),
+    marginBottom: hp(3),
   },
   title: {
     marginBottom: hp(1),
