@@ -34,26 +34,42 @@ const AddAccountModal = ({ visible, onClose }) => {
 
     setSaving(true);
     try {
-      const promises = accounts.map((acct, idx) =>
-        createAccountApi({
-          type: accountType,
-          sourceId: acct.id === 'other' ? null : acct.id,
-          label: acct.label,
-          color: acct.color,
-          initials: acct.initials,
-          balance: Number(acct.balance),
-          isPrimary: false,
-          sortOrder: 999 + idx,
-        })
+      // allSettled, not all: when one fails the others are already created on
+      // the server, so they leave the form and a retry only resends the failures
+      // (retrying everything would duplicate the ones that worked).
+      const results = await Promise.allSettled(
+        accounts.map((acct, idx) =>
+          createAccountApi({
+            type: accountType,
+            sourceId: acct.id === 'other' ? null : acct.id,
+            label: acct.label,
+            color: acct.color,
+            initials: acct.initials,
+            balance: Number(acct.balance) || 0,
+            isPrimary: false,
+            sortOrder: 999 + idx,
+          }),
+        ),
       );
 
-      await Promise.all(promises);
-      await fetchAccounts();
-      toast.success(`${accounts.length} account${accounts.length > 1 ? 's' : ''} added successfully`);
-      handleClose();
-    } catch (error) {
-      const message = error.response?.data?.message || error.message;
-      toast.error(message);
+      const failed = accounts.filter((_, idx) => results[idx].status === 'rejected');
+      const added = accounts.length - failed.length;
+      if (added > 0) await fetchAccounts();
+
+      if (failed.length === 0) {
+        toast.success(`${added} account${added > 1 ? 's' : ''} added successfully`);
+        handleClose();
+        return;
+      }
+
+      setAccounts(failed);
+      const firstError = results.find(r => r.status === 'rejected').reason;
+      const reason = firstError?.message || 'Please try again.';
+      toast.error(
+        added > 0
+          ? `${added} added. Couldn't add ${failed.map(a => a.label).join(', ')}: ${reason}`
+          : reason,
+      );
     } finally {
       setSaving(false);
     }

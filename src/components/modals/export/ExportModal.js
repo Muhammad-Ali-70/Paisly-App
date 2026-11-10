@@ -16,6 +16,9 @@ import { useThemeColors } from '@hooks/useThemeColors';
 import { exportCSVApi, exportEmailApi } from '../../../services/transactionService';
 import { useToastService } from '../../../utils/ToastService';
 
+// Well under the Binder limit once Android wraps it in an Intent (UTF-16)
+const MAX_SHARE_CHARS = 200 * 1024;
+
 const OPTIONS = [
   {
     id: 'csv',
@@ -49,11 +52,21 @@ const ExportModal = ({ visible, onClose }) => {
         if (!csvData) {
           throw new Error('No data to export');
         }
-        await Share.share({
+        // The share sheet passes text through Android's ~1MB Binder buffer;
+        // a long history overflows it (TransactionTooLargeException). Big
+        // exports go to the user's email as a real .csv attachment instead.
+        if (csvData.length > MAX_SHARE_CHARS) {
+          await exportEmailApi();
+          toast.success('Your history is large, so we emailed it to you as a CSV file');
+          onClose();
+          return;
+        }
+        const result = await Share.share({
           message: csvData,
           ...(Platform.OS === 'ios' ? { title: 'transactions.csv' } : {}),
         });
-        toast.success('CSV ready to save');
+        // Only claim success when it was actually shared, not dismissed
+        if (result?.action === Share.sharedAction) toast.success('CSV shared');
       } else if (format === 'email') {
         await exportEmailApi();
         toast.success('Export sent to your email');
