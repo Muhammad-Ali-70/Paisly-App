@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Paisly LinkedIn post</title>
+<style>
+  @font-face { font-family: 'Manrope'; src: url('../manrope.woff2') format('woff2'); font-weight: 200 800; }
+  :root {
+    --navy: #0b1222; --navy2: #0f172a; --line: rgba(148,163,184,.18);
+    --green: #10b981; --green-deep: #006c49; --text: #f8fafc; --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 1500px; overflow: hidden; }
+  body {
+    font-family: 'Manrope', sans-serif; color: var(--text); position: relative;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 100%, rgba(16,185,129,.30), transparent 70%),
+      radial-gradient(circle at 92% 6%, rgba(16,185,129,.16), transparent 34%),
+      linear-gradient(180deg, var(--navy2), var(--navy));
+  }
+  /* faint grid texture */
+  body::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 60px 60px; opacity: .25;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 20%, transparent 75%);
+  }
+  .top { position: relative; padding: 80px 88px 0; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand svg { width: 46px; height: 46px; }
+  .brand span { font-size: 36px; font-weight: 800; letter-spacing: -0.8px; }
+  .live {
+    display: flex; align-items: center; gap: 12px; padding: 13px 22px; border-radius: 99px;
+    background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.45);
+    font-size: 19px; font-weight: 700; color: #6ee7b7; letter-spacing: .2px;
+  }
+  .live i { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 6px rgba(16,185,129,.22); }
+
+  .copy { position: relative; padding: 78px 88px 0; }
+  h1 { font-size: 92px; line-height: 1.02; font-weight: 800; letter-spacing: -3.2px; }
+  h1 em { font-style: normal; background: linear-gradient(90deg, #34d399, #10b981); -webkit-background-clip: text; color: transparent; }
+  .sub { margin-top: 30px; font-size: 28px; line-height: 1.45; font-weight: 500; color: var(--muted); max-width: 860px; }
+  .sub b { color: var(--text); font-weight: 700; }
+
+  .phones { position: absolute; left: 0; right: 0; bottom: -140px; height: 1060px; }
+  .phone {
+    position: absolute; width: 350px; aspect-ratio: 1080 / 2424; border-radius: 52px;
+    padding: 10px; background: #1e293b; border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 40px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.4);
+  }
+  .phone img { width: 100%; height: 100%; display: block; border-radius: 43px; object-fit: cover; }
+  .p-left  { left: 104px; top: 130px; transform: rotate(-9deg); opacity: .96; }
+  .p-right { right: 104px; top: 130px; transform: rotate(9deg); opacity: .96; }
+  .p-mid   { left: 50%; top: 0; width: 392px; transform: translateX(-50%); z-index: 2; box-shadow: 0 50px 100px rgba(0,0,0,.6), 0 0 120px rgba(16,185,129,.25); }
+
+  .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; z-index: 3;
+    background: linear-gradient(180deg, transparent, rgba(11,18,34,.95) 55%, var(--navy)); }
+  .foot { position: absolute; left: 88px; right: 88px; bottom: 56px; z-index: 4;
+    display: flex; justify-content: center; gap: 14px; }
+  .tag { padding: 12px 22px; border-radius: 99px; font-size: 19px; font-weight: 600; color: #cbd5e1;
+    background: rgba(30,41,59,.85); border: 1px solid rgba(148,163,184,.22); }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="353 231 794 1038"><path fill="#10b981" d="M 1146.613281 475.070312 L 1146.613281 780.28125 L 913.410156 780.28125 L 913.410156 464.792969 L 353.378906 464.792969 L 353.378906 231.585938 L 906.476562 231.585938 C 949.445312 275.710938 1061.324219 389.050781 1146.613281 475.070312 Z M 353.378906 1035.507812 L 586.585938 1268.433594 L 586.585938 1013.488281 L 913.429688 1013.488281 L 913.429688 780.28125 L 353.378906 780.28125 Z"/></svg>
+      <span>Paisly</span>
+    </div>
+    <div class="live"><i></i>Now live on Google Play</div>
+  </div>
+
+  <div class="copy">
+    <h1>Every rupee spent.<br><em>Every rupee lent.</em></h1>
+    <p class="sub">Daily <b>kharcha</b>, <b>udhar</b> and monthly budgets, all in one simple app.</p>
+  </div>
+
+  <div class="phones">
+    <div class="phone p-left"><img src="../screenshots/raw/budget.png"></div>
+    <div class="phone p-right"><img src="../screenshots/raw/udhar.png"></div>
+    <div class="phone p-mid"><img src="../screenshots/raw/home.png"></div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="foot">
+    <span class="tag">Expenses</span><span class="tag">Udhar book</span><span class="tag">Budgets</span><span class="tag">Cash · Bank · JazzCash · Easypaisa</span>
+  </div>
+</body>
+</html>
