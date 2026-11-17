@@ -1,11 +1,6 @@
-import useAppStore from '@store/useAppStore';
+import { useResolvedTheme } from './useResolvedTheme';
 
-/**
- * Returns true when the active theme is 'dark'.
- * Use this instead of checking `theme.background === '#0F172A'`.
- */
-export const useIsDarkMode = () => {
-  return useAppStore(state => state.theme) === 'dark';
-};
+/** Returns true when the active theme is 'dark'. */
+export const useIsDarkMode = () => useResolvedTheme() === 'dark';
 
 export default useIsDarkMode;

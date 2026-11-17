@@ -64,7 +64,7 @@ const CustomTabBar = ({ state, navigation }) => {
   const onAddPress = () => navigation.navigate('AddTransaction');
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
       <View style={[styles.bar, { backgroundColor: theme.surfacePrimary }]}>
         <View style={styles.side}>{left.map(renderTab)}</View>
         <View style={styles.fabSlot} />

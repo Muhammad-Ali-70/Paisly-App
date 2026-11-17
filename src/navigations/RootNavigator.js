@@ -1,12 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Linking } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
 import RootStackNavigator from './RootStackNavigator';
 import useAuthStore, { selectPendingAction } from '../store/useAuthStore';
 import { actionFromUrl } from '../utils/deepLinkHandler';
+import { useThemeColors } from '@hooks/useThemeColors';
+import { useIsDarkMode } from '@hooks/useIsDarkMode';
 
 const RootNavigator = () => {
   const pendingAction = useAuthStore(selectPendingAction);
+  const colors = useThemeColors();
+  const isDark = useIsDarkMode();
+
+  // Without this, React Navigation paints its own light background, which
+  // showed as white corners behind the rounded tab bar in dark mode.
+  const navTheme = useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        background: colors.background,
+        card: colors.surfacePrimary,
+        border: colors.outlineVariant,
+        primary: colors.primary,
+        text: colors.textMain,
+      },
+    };
+  }, [isDark, colors]);
 
   useEffect(() => {
     // paisly:// links: launcher shortcuts (res/xml/shortcuts.xml), the home-screen
@@ -25,7 +50,7 @@ const RootNavigator = () => {
   }, []);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <RootStackNavigator pendingAction={pendingAction} />
     </NavigationContainer>
   );

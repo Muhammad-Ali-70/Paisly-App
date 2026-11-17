@@ -1,4 +1,3 @@
-import { Appearance } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { mmkvStorage } from '../services/storage';
@@ -68,19 +67,25 @@ const useAppStore = create(
       dismissChecklist: () => set({ checklistDismissed: true }),
 
       // ── Theme ───────────────────────────────────────────────────────────────
-      // On first launch, read system appearance preference; persist preserves user choice
-      theme: Appearance.getColorScheme() || 'light',
-      setTheme: theme => set({ theme }),
-      toggleTheme: () =>
-        set(state => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      // 'system' follows the phone; 'light' / 'dark' are the user's override.
+      // The resolved light/dark value comes from useResolvedTheme().
+      themeMode: 'system',
+      setThemeMode: themeMode => set({ themeMode }),
     }),
 
     {
       name: 'paisly-app-store',
+      // v0 saved a fixed 'light'/'dark' copied from the phone on first launch,
+      // so it never followed the phone again. Drop it and default to 'system'.
+      version: 1,
+      migrate: persisted => {
+        const { theme, ...rest } = persisted || {};
+        return { ...rest, themeMode: 'system' };
+      },
       storage: createJSONStorage(() => mmkvStorage),
       partialize: state => ({
         currency: state.currency,
-        theme: state.theme,
+        themeMode: state.themeMode,
         investmentDefaults: state.investmentDefaults,
         reminders: state.reminders,
         paydayDay: state.paydayDay,

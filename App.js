@@ -7,8 +7,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar, View, StyleSheet } from 'react-native';
-import useAppStore from '@store/useAppStore';
 import { useThemeColors } from '@hooks/useThemeColors';
+import { useResolvedTheme } from '@hooks/useResolvedTheme';
 import ToastCustomProvider from '@contexts/ToastProvider.js';
 import RootNavigator from '@navigations/RootNavigator.js';
 import { initSentry } from '@services/sentry.js';
@@ -55,7 +55,7 @@ const ErrorFallback = ({ resetError }) => {
 };
 
 const AppContent = () => {
-  const theme = useAppStore(state => state.theme);
+  const theme = useResolvedTheme();
   const colors = useThemeColors();
   const barStyle = theme === 'dark' ? 'light-content' : 'dark-content';
 

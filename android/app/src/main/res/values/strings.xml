@@ -6,5 +6,5 @@
     <string name="shortcut_add_income_long">Add a new income</string>
     <string name="shortcut_history">History</string>
     <string name="shortcut_history_long">View transaction history</string>
-    <string name="widget_safetospendwidget_description" translatable="false">What you can spend today, plus your next bill, debt and notifications</string>
+    <string name="widget_safetospendwidget_description" translatable="false">What you have spent this month, plus your next bill, debt and notifications</string>
 </resources>

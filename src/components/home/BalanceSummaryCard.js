@@ -5,14 +5,14 @@ import { TrendingUp } from 'lucide-react-native';
 import { hp, wp } from '../../constants/responsive';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { getGradients } from '../../constants/colors';
-import useAppStore from '@store/useAppStore';
+import { useResolvedTheme } from '@hooks/useResolvedTheme';
 import { Label, borderRadius, shadowCard } from '../../constants/globalstyle';
 import { formatDisplay } from '../common/CurrencyView';
 import RollingNumber from '../common/RollingNumber';
 
 const BalanceSummaryCard = ({ totalBalance = 0, monthlyChange = '+2.4%' }) => {
   const theme = useThemeColors();
-  const themeName = useAppStore(s => s.theme);
+  const themeName = useResolvedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const grads = getGradients(themeName);
 

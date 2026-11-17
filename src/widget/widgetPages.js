@@ -17,18 +17,24 @@ const daysUntilDate = (date, now = new Date()) => {
   return Math.round((a - b) / DAY_MS);
 };
 
-const spendPage = result => {
-  // No payday chosen yet, so there's no honest figure to show
-  if (!result) return null;
-  const days = `${result.daysLeft} day${result.daysLeft === 1 ? "" : "s"} to payday`;
-  // The amount stays a short figure; what it means goes in the label
-  if (result.shortfall > 0) {
-    return { kind: "spend", label: "Short until payday", amount: money(result.shortfall), caption: days, tone: "alert" };
-  }
-  if (result.leftToday < 0) {
-    return { kind: "spend", label: "Over today’s limit", amount: money(result.leftToday), caption: days, tone: "alert" };
-  }
-  return { kind: "spend", label: "Safe to spend today", amount: money(result.leftToday), caption: days, tone: "normal" };
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December',
+];
+
+// What was actually spent: this month's total, with today's spend underneath.
+// Needs no payday or bills set up, so it's the same for every user.
+const spendPage = (dashboard, now = new Date()) => {
+  if (!dashboard) return null;
+  const today =
+    dashboard.dailySpending?.find(d => d.day === now.getDate())?.total ?? 0;
+  return {
+    kind: 'spend',
+    label: `Spent in ${MONTHS[now.getMonth()]}`,
+    amount: money(dashboard.totalExpenses ?? 0),
+    caption: today > 0 ? `Today: ${money(today)}` : 'Nothing spent today',
+    tone: 'normal',
+  };
 };
 
 const billPage = bills => {
@@ -80,12 +86,12 @@ const notificationsPage = unread =>
     : null;
 
 /**
- * The pages the widget cycles through. The spending figure always comes first;
+ * The pages the widget cycles through. The month's spending always comes first;
  * the others appear only when there is something to show.
  */
-export const buildWidgetPages = ({ result, bills, debts, unread }) =>
+export const buildWidgetPages = ({ dashboard, bills, debts, unread }) =>
   [
-    spendPage(result),
+    spendPage(dashboard),
     billPage(bills),
     debtPage(debts),
     notificationsPage(unread),

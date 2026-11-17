@@ -5,6 +5,7 @@ import HomeHeader from '../../../components/home/HomeHeader';
 import SettingsProfileCard from '../../../components/settings/SettingsProfileCard';
 import SettingsSection from '../../../components/settings/SettingsSection';
 import SettingsRow from '../../../components/settings/SettingsRow';
+import AppearanceRow from '../../../components/settings/AppearanceRow';
 import { Label, borderRadius } from '../../../constants/globalstyle';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { hp, wp } from '../../../constants/responsive';
@@ -58,8 +59,6 @@ const SettingsScreen = () => {
   const user = useAuthStore(s => s.user);
   const displayName = useAuthStore(selectDisplayName);
   const { accounts, loading, totalBalance } = useAccounts();
-  // const theme = useAppStore(s => s.theme);
-  // const toggleTheme = useAppStore(s => s.toggleTheme);
   const reminders = useAppStore(s => s.reminders);
   const paydayDay = useAppStore(s => s.paydayDay);
   const setPaydayDay = useAppStore(s => s.setPaydayDay);
@@ -159,25 +158,7 @@ const SettingsScreen = () => {
             onPress={() => navigation.navigate('TransferScreen')}
             showDivider={false}
           />
-          {/* TODO(post-MVP): re-enable Dark Mode and Default Currency
-          <SettingsRow
-            iconName="moon"
-            title="Dark Mode"
-            subtitle="Adjust system appearance"
-            rightElement={
-              <Switch
-                value={darkMode}
-                onValueChange={toggleTheme}
-                trackColor={{
-                  false: themeColors.outlineVariant,
-                  true: themeColors.primaryContainer,
-                }}
-                thumbColor={themeColors.surfacePrimary}
-              />
-            }
-            onPress={toggleTheme}
-            showDivider
-          />
+          {/* TODO(post-MVP): re-enable Default Currency
           <SettingsRow
             iconName="currency"
             title="Default Currency"
@@ -205,6 +186,11 @@ const SettingsScreen = () => {
           />
         </SettingsSection>
         */}
+
+        {/* ── Appearance ── */}
+        <SettingsSection title="APPEARANCE">
+          <AppearanceRow />
+        </SettingsSection>
 
         {/* ── Reminders ── */}
         <SettingsSection title="REMINDERS">
